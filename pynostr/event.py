@@ -7,6 +7,8 @@ import re
 import json
 import time
 import hashlib
+import pynostr
+import asyncio
 import cSecp256k1
 
 from enum import IntEnum
@@ -42,20 +44,20 @@ class EventType(IntEnum):
     SET_METADATA = 0
     TEXT_NOTE = 1
     RECOMENDED_SERVER = 2
-    # https://github.com/nostr-protocol/nips/blob/master/02.md
-    CONTACT_LIST = 3
-    # https://github.com/nostr-protocol/nips/blob/master/04.md
-    ENCRYPT_MESSAGE = 4
-    # https://github.com/nostr-protocol/nips/blob/master/09.md
-    EVENT_DELETE = 5
-    # https://github.com/nostr-protocol/nips/blob/master/25.md
-    REACTION = 7
-    # https://github.com/nostr-protocol/nips/blob/master/28.md
-    CHANNEL_CREATE = 40
-    CHANNEL_METAData = 41
-    CHANNEL_MESSAGE = 42
-    CHANNEL_HIDE = 43
-    CHANNEL_MUTE = 44
+    # # https://github.com/nostr-protocol/nips/blob/master/02.md
+    # CONTACT_LIST = 3
+    # # https://github.com/nostr-protocol/nips/blob/master/04.md
+    # ENCRYPT_MESSAGE = 4
+    # # https://github.com/nostr-protocol/nips/blob/master/09.md
+    # EVENT_DELETE = 5
+    # # https://github.com/nostr-protocol/nips/blob/master/25.md
+    # REACTION = 7
+    # # https://github.com/nostr-protocol/nips/blob/master/28.md
+    # CHANNEL_CREATE = 40
+    # CHANNEL_METADATA = 41
+    # CHANNEL_MESSAGE = 42
+    # CHANNEL_HIDE = 43
+    # CHANNEL_MUTE = 44
 
 
 # https://github.com/nostr-protocol/nips/blob/master/10.md#marked-e-tags-preferred
@@ -76,6 +78,9 @@ class TagList(list):
             tag_0 = tag[0]
             result[tag_0] = result.get(tag_0, ()) + (tag[1:], )
         return result
+
+    def add_tag(self, key: str, *values) -> None:
+        self.append([key] + ["%s" % v for v in values])
 
     def add_event(
         self, event_id: str, url: str = "", marker: str = None
@@ -100,9 +105,6 @@ class TagList(list):
         if petname is not None:
             data.append(petname)
         self.append(data)
-
-    def add_tag(self, tag: list) -> None:
-        self.append(tag)
 
     def reference(self, puk_or_evnt: str) -> int:
         for tag in self:
@@ -133,6 +135,24 @@ Attributes:
     sig (str): hexadecimal raw representation of schnorr signature computed
         over the event id.
 """
+
+    @staticmethod
+    def set_metadata(name: str, about: str, picture: str, prvkey: str = None):
+        e = Event(
+            kind=EventType.SET_METADATA,
+            content={"name": name, "about": about, "picture": picture}
+        )
+        if prvkey is not None:
+            e.sign(prvkey)
+        return e
+
+    @staticmethod
+    def text_note(content: str, prvkey: str = None):
+        e = Event(kind=EventType.TEXT_NOTE, content=content)
+        if prvkey is not None:
+            e.sign(prvkey)
+        return e
+
     def __init__(self, cnf: dict = {}, **kw) -> None:
         self.id = None
         self.pubkey = None
@@ -208,24 +228,27 @@ Attributes:
 
         return self
 
+    # https://github.com/nostr-protocol/nips/blob/master/13.md
+    def set_pow_tag(self, difficulty: int = 0) -> list:
+        # 4 bits per byte so for one 0 divide by 4
+        leading_0 = "0" * (difficulty // 4)
+        n_0 = len(leading_0)
+        # compute seiral with void nonce tag
+        serial = json.dumps(
+            [
+                0, self.pubkey, self.created_at, self.kind,
+                self.tags + [["nonce", "%s", "%s" % (n_0 * 4)], ],
+                self.content
+            ], separators=(",", ":"), ensure_ascii=False
+        )
+        # local shortcut to speed up while loop
+        enc = str.encode
+        sha256 = hashlib.sha256
+        nonce = 0
+        while not sha256(enc(serial % nonce)).hexdigest()[:n_0] == leading_0:
+            nonce += 1
 
-# https://github.com/nostr-protocol/nips/blob/master/13.md
-def pow_tag(event: Event, difficulty: int = 0) -> list:
-    # 4 bits per byte so for one 0 divide by 4
-    leading_0 = "0" * (difficulty // 4)
-    n_0 = len(leading_0)
-    # compute seiral with void nonce tag
-    serial = json.dumps(
-        [
-            0, event.pubkey, event.created_at, event.kind,
-            event.tags + [["nonce", "%s", "%s" % (n_0 * 4)], ],
-            event.content
-        ], separators=(",", ":"), ensure_ascii=False
-    )
-    # local shortcut to speed up while loop
-    enc = str.encode
-    sha256 = hashlib.sha256
-    nonce = 0
-    while not sha256(enc(serial % nonce)).hexdigest()[:n_0] == leading_0:
-        nonce += 1
-    return ["nonce", "%s" % nonce, "%s" % (n_0 * 4)]
+        self.tags.append(["nonce", "%s" % nonce, "%s" % (n_0 * 4)])
+
+    def send_to(self, url: str):
+        return asyncio.run(pynostr.send_event(self.__dict__, url))
