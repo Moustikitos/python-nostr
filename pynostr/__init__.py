@@ -1,7 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-`pynostr` aims to provide a simple interface to interact with nostr
+**`pynostr`** aims to provide a simple python interface to interact with nostr
 environment.
+
+```python
+>>> from pynostr import event
+>>> e = event.Event.text_note("Hello nostr !").sign()
+Type or paste your passphrase >
+>>> e.send_to("wss://relay.nostr.info")
+['OK', '2781d70bd1497a8db1ac381262de29841d44fd88d387f2725d5e5eb7871d28c9', Tru\
+e, '']
+```
 """
 
 import os
@@ -11,11 +20,26 @@ import websockets
 from collections import namedtuple
 from pynostr import bech32
 
+#: Contact is defined by a public key, a relay and a petname
 Contact = namedtuple('Contact', 'pubkey relay petname')
 
 
-async def send_event(event: dict, url: str):
-    async with websockets.connect(url) as ws:
+class Bech32DecodeError(Exception):
+    """Exception used for unsuccessful bech32 processing"""
+
+
+async def send_event(event: dict, uri: str) -> list:
+    """
+Push single event to a single relay and return responses.
+
+Args:
+    event (dict): the event given as a python dict.
+    uri (str): relay uri.
+
+Returns:
+    list: relay response as python list.
+"""
+    async with websockets.connect(uri) as ws:
         req = json.dumps(["EVENT", event], separators=(",", ":"))
         await ws.send(req)
         resp = await ws.recv()
@@ -45,7 +69,20 @@ def load_contact(name: str) -> None:
     return []
 
 
-def pubkey(pubkey: str) -> str:
+def to_bech32(prefix: str, hexa: str):
+    converted_bits = bech32.convertbits(bytes.fromhex(hexa), 8, 5)
+    return bech32.bech32_encode(prefix, converted_bits, bech32.Encoding.BECH32)
+
+
+def from_bech32(b32: str):
+    data, success = bech32.bech32_decode(b32)[1:]
+    if success:
+        return bytearray(bech32.convertbits(data, 5, 8))[:-1].hex()
+    else:
+        raise Bech32DecodeError()
+
+
+def bech32_puk(pubkey: str) -> str:
     """
 Return a nostr public key according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
@@ -56,11 +93,10 @@ Args:
 Returns:
     str: nostr public key
 """
-    converted_bits = bech32.convertbits(bytes.fromhex(pubkey), 8, 5)
-    return bech32.bech32_encode("npub", converted_bits, bech32.Encoding.BECH32)
+    return to_bech32("npub", pubkey)
 
 
-def prvkey(prvkey: str) -> str:
+def bech32_prk(prvkey: str) -> str:
     """
 Return a nostr private key according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
@@ -71,11 +107,10 @@ Args:
 Returns:
     str: nostr private key
 """
-    converted_bits = bech32.convertbits(bytes.fromhex(prvkey), 8, 5)
-    return bech32.bech32_encode("nsec", converted_bits, bech32.Encoding.BECH32)
+    return to_bech32("nsec", prvkey)
 
 
-def noteid(noteid: str) -> str:
+def bech32_nid(noteid: str) -> str:
     """
 Return a nostr event id according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
@@ -86,5 +121,4 @@ Args:
 Returns:
     str: nostr event id
 """
-    converted_bits = bech32.convertbits(bytes.fromhex(noteid), 8, 5)
-    return bech32.bech32_encode("note", converted_bits, bech32.Encoding.BECH32)
+    return to_bech32("note", noteid)
