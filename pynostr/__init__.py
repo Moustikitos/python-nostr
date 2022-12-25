@@ -6,11 +6,21 @@ environment.
 
 import os
 import json
+import websockets
 
 from collections import namedtuple
 from pynostr import bech32
 
 Contact = namedtuple('Contact', 'pubkey relay petname')
+
+
+async def send_event(event: dict, url: str):
+    async with websockets.connect(url) as ws:
+        req = json.dumps(["EVENT", event], separators=(",", ":"))
+        await ws.send(req)
+        resp = await ws.recv()
+        result = json.loads(resp)
+    return result
 
 
 def dump_contact(name: str, *contacts) -> None:
@@ -37,7 +47,7 @@ def load_contact(name: str) -> None:
 
 def pubkey(pubkey: str) -> str:
     """
-Return a nostr public key according to [NIPS-19](
+Return a nostr public key according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 Args:
@@ -52,7 +62,7 @@ Returns:
 
 def prvkey(prvkey: str) -> str:
     """
-Return a nostr private key according to [NIPS-19](
+Return a nostr private key according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 Args:
@@ -67,7 +77,7 @@ Returns:
 
 def noteid(noteid: str) -> str:
     """
-Return a nostr event id according to [NIPS-19](
+Return a nostr event id according to [NIP 19](
 https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 Args:
