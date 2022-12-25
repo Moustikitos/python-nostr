@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module provides a simple text client to subscribe to specific relay.
+This module provides a simple text client to subscribe to a specific relay.
 
 ```python
 >>> from pynostr import client
@@ -11,13 +11,21 @@ This module provides a simple text client to subscribe to specific relay.
 [...]
 ```
 
+During a subscription, it is possible to send events.
+
+```python
+>>> c.send_event(kind=1, content="hello nostr !")
+Type or paste your passphrase >
+<dce2c201607e803384f51574c6a472a58fcfaf49bf32944c2e6caa9a72b87dad>[23:02:12](     1): hello nostr !
+['OK', '1c84a86b44716dbc66fb739ded71bd75213acb2f6d23a88e4a44dac09b277edb', True, '']
+```
+
+
 ```python
 >>> c.unsubscribe()
 [...]
 ----- END -----
 ```
-
-During a subscription, it is possible to send events.
 """
 
 import os
@@ -171,6 +179,7 @@ Attributes:
                     # repeating endlessly.
                     for i in range(self.__skip):
                         await asyncio.wait_for(ws.recv(), timeout=self.timeout)
+                    # enter dialog loop
                     while not self.__stop.is_set():
                         self.response.put(
                             await asyncio.wait_for(
@@ -221,5 +230,10 @@ Attributes:
         self.request.put(["CLOSE", self.__id])
 
     def send_event(self, cnf: dict = {}, **kw):
-        e = event.Event(cnf, **kw).sign(prvkey=kw.get("prvkey", None))
-        self.request.put(["EVENT", e.__dict__])
+        evnt = event.Event(cnf, **kw).sign(prvkey=kw.get("prvkey", None))
+        self.request.put(["EVENT", evnt.__dict__])
+
+    def push_event(self, evnt: event.Event):
+        if "sig" not in evnt:
+            evnt.sign()
+        self.request.put(["EVENT", evnt.__dict__])
