@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 This module provides nostr basic functionalities.
 """
@@ -6,6 +7,7 @@ This module provides nostr basic functionalities.
 import os
 import json
 import websockets
+import cSecp256k1
 
 from collections import namedtuple
 from pynostr import bech32
@@ -34,7 +36,7 @@ needed.
 
 Arguments:
     name (str): filename to be used.
-    *contact: variable length of [contact](#pynostr.Contact)
+    *contacts: variable length of [contact](#pynostr.Contact)
 """
     # get the file path and create folders if needed
     filename = os.path.join(os.path.dirname(__path__[0]), ".contact", name)
@@ -79,6 +81,17 @@ Args:
     uri (str): relay uri.
 Returns:
     list: relay response as python list.
+Examples:
+    Here is a snippet of python code to send a text note to a specific nostr
+    relay.
+
+    ```python
+    >>> from pynostr import event
+    >>> e = event.Event.text_note("Hello nostr !").sign()
+    Type or paste your passphrase >
+    >>> send_event(e.__dict__, "wss://relay.nostr.info")
+    ['OK', '2781d[...]d28c9', True, '']
+    ```
 """
     async with websockets.connect(uri) as ws:
         req = json.dumps(["EVENT", event], separators=(",", ":"))
@@ -162,3 +175,54 @@ Returns:
 class Bech32DecodeError(Exception):
     """Exception used for unsuccessful bech32 processing"""
     pass
+
+
+class Keyring(cSecp256k1.Schnorr):
+    """
+`Keyring` class is used to manage secp256k1 keys. It is a subclass of python
+`int` with cryptographic attributes and methods.
+
+Attributes:
+    encpuk (property): secp256k1 encoded public key.
+    pubkey (property): nostr encoded public key.
+    npub (property): bech32 encoded nostr public key.
+    nsec (property): bech32 encoded nostr private key.
+
+Examples:
+    ```python
+    >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+    >>> k.encpuk
+    '02a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
+    >>> k.pubkey
+    'a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
+    >>> k.npub
+    'npub154y5yrfl8fjwtxz4arrypa7xz899v7ucvtay6y9t58r8d2nsxmzsvad8yf'
+    >>> k.nsec
+    'nsec1mvqqm229tvkd4j395g76l2deumcwachl6lup4xyp0k76gyw6ztdsrqdvvu'
+    >>> sig = k.sign(b"simple message").raw()
+    >>> k.verify(b"simple message", sig)
+    True
+    >>> k.verify(b"other message", sig)
+    False
+    ```
+"""
+
+    @property
+    def encpuk(self):
+        return cSecp256k1.Schnorr.puk(self).encode().decode("utf-8")
+
+    @property
+    def pubkey(self):
+        return cSecp256k1.Schnorr.puk(self).x.decode("utf-8")
+
+    @property
+    def npub(self):
+        return bech32_puk(self.pubkey)
+
+    @property
+    def nsec(self):
+        return bech32_prk("%064x" % self)
+
+    @staticmethod
+    def from_bech32(b32prk: str) -> str:
+        return cSecp256k1.Schnorr(int(from_bech32(b32prk), base=16))

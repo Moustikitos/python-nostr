@@ -199,3 +199,41 @@ class Bech32DecodeError(Exception)
 
 Exception used for unsuccessful bech32 processing
 
+<a id="pynostr.Keyring"></a>
+
+## Keyring Objects
+
+```python
+class Keyring(cSecp256k1.Schnorr)
+```
+
+`Keyring` class is used to manage secp256k1 keys. It is a subclass of python
+`int` with cryptographic attributes and methods.
+
+**Attributes**:
+
+- `encpuk` _property_ - secp256k1 encoded public key.
+- `pubkey` _property_ - nostr encoded public key.
+- `npub` _property_ - bech32 encoded nostr public key.
+- `nsec` _property_ - bech32 encoded nostr private key.
+
+**Examples**:
+
+  
+  ```python
+  >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+  >>> k.encpuk
+  '02a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
+  >>> k.pubkey
+  'a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
+  >>> k.npub
+  'npub154y5yrfl8fjwtxz4arrypa7xz899v7ucvtay6y9t58r8d2nsxmzsvad8yf'
+  >>> k.nsec
+  'nsec1mvqqm229tvkd4j395g76l2deumcwachl6lup4xyp0k76gyw6ztdsrqdvvu'
+  >>> sig = k.sign(b"simple message").raw()
+  >>> k.verify(b"simple message", sig)
+  True
+  >>> k.verify(b"other message", sig)
+  False
+  ```
+
