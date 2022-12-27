@@ -19,7 +19,7 @@ Type or paste your passphrase >
 This doc is generated using [pydoc-markdown](
 https://github.com/NiklasRosenstein/pydoc-markdown
 ) upon python docstring written
-following [Google docstring recomendation](
+following [Google docstring recommendation](
     https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e
 )
 
