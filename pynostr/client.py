@@ -2,30 +2,6 @@
 
 """
 This module provides a simple text client to subscribe to a specific relay.
-
-```python
->>> from pynostr import client
->>> c = client.BaseThread("wss://relay.nostr.info")
->>> c.subscribe(kinds=[0, 1, 3], limit=5)
------ BEGIN -----
-[...]
-```
-
-During a subscription, it is possible to send events.
-
-```python
->>> c.send_event(kind=1, content="hello nostr !")
-Type or paste your passphrase >
-<dce2c201607e803384f51574c6a472a58fcfaf49bf32944c2e6caa9a72b87dad>[23:02:12](     1): hello nostr !
-['OK', '1c84a86b44716dbc66fb739ded71bd75213acb2f6d23a88e4a44dac09b277edb', True, '']
-```
-
-
-```python
->>> c.unsubscribe()
-[...]
------ END -----
-```
 """
 
 import os
@@ -107,15 +83,16 @@ def print_during_input(string: str) -> None:
 class BaseThread:
     """
 Args:
-    uri (str): .
-    timeout (int): .
+    uri (str): the nostr relay url.
+    timeout (int): wait timeout in seconds [default = 5].
 
 Attributes:
-    uri (str): .
-    timeout (str): .
-    response (int): .
-    request (int): .
-    loop (list): .
+    uri (str): the nostr relay url.
+    timeout (str): wait timeout in seconds [default = 5].
+    response (queue.Queue): queue to store relay response.
+    request (queue.Queue): queue to store client requests.
+    loop (asyncio.BaseEventLoop): event loop used to un sending/listening
+        process.
 """
 
     def __init__(self, uri: str, timeout: int = 5) -> None:
@@ -127,7 +104,6 @@ Attributes:
         self.__filter: filter.Filter
         self.__id = None
         self.__stop = threading.Event()
-        self.__skip = 0
 
     def subscribe(self, cnf: dict = {}, **kw) -> None:
         # check if already runing a subscription
@@ -140,7 +116,7 @@ Attributes:
         self.__filter = filter.Filter(cnf, **kw)
         self.__id = os.urandom(16).hex()
         self.__stop.clear()
-        self.__skip = 0
+        # self.__skip = 0
         # start response daemon
         self.resp_daemon = threading.Thread(target=self.manage_resp)
         self.resp_daemon.setDaemon(True)
@@ -153,7 +129,7 @@ Attributes:
         self.lstn_daemon.setDaemon(True)
         self.lstn_daemon.start()
 
-    async def __send_event(self) -> bool:
+    async def __send_event(self) -> None:
         if not self.request.empty():
             req = self.request.get()
             if req[0] == "CLOSE":
@@ -174,25 +150,18 @@ Attributes:
                     await ws.send(
                         json.dumps(["REQ", self.__id, self.__filter.apply()])
                     )
-                    # self.__skip is set to self.limit after the first
-                    # exception so first events defined by self.limit are not
-                    # repeating endlessly.
-                    for i in range(self.__skip):
-                        await asyncio.wait_for(ws.recv(), timeout=self.timeout)
                     # enter dialog loop
                     while not self.__stop.is_set():
+                        await(self.__send_event())
                         self.response.put(
                             await asyncio.wait_for(
                                 ws.recv(), timeout=self.timeout
                             )
                         )
-                        await(self.__send_event())
             except websockets.ConnectionClosed:
                 continue
             except TimeoutError:
                 continue
-            finally:
-                self.__skip = self.__filter.limit
         # terminate self.resp_daemon
         self.response.put("STOP")
 
@@ -206,34 +175,40 @@ Attributes:
             else:
                 self.apply(json.loads(data))
 
-    def apply(self, data: list):
+    def apply(self, data: list) -> None:
         if data[0] == "EVENT":
             evnt = data[-1]
-            prefix = "<%s>[%s](% 6d): " % (
+            prefix = " <%s>[%s](% 6d) ---" % (
                 evnt["pubkey"],
                 datetime.fromtimestamp(evnt["created_at"]).strftime("%X"),
                 evnt["kind"]
             )
+            prefix = prefix.rjust(150, "-")
             content = textwrap.wrap(
-                evnt["content"], width=100, break_on_hyphens=True
+                evnt["content"], width=150, break_on_hyphens=True
             )
             if content:
-                print_during_input(prefix + content[0])
-                if len(content) > 1:
-                    padding = " " * len(prefix)
-                    for line in [li for li in content[1:] if li != ""]:
-                        print_during_input(padding + line)
+                print_during_input(prefix)
+                for line in content:
+                    print_during_input(line.strip())
+                #  + content[0])
+                # if len(content) > 1:
+                #     padding = " " * len(prefix)
+                #     for line in [li for li in content[1:] if li != ""]:
+                #         print_during_input(padding + line)
         else:
             print_during_input(data)
 
-    def unsubscribe(self):
+    def unsubscribe(self) -> None:
         self.request.put(["CLOSE", self.__id])
 
-    def send_event(self, cnf: dict = {}, **kw):
-        evnt = event.Event(cnf, **kw).sign(prvkey=kw.get("prvkey", None))
+    def send_event(self, cnf: dict = {}, **kw) -> None:
+        params = dict(cnf, **kw)
+        prvkey = params.pop("prvkey", None)
+        evnt = event.Event(**params).sign(prvkey=prvkey)
         self.request.put(["EVENT", evnt.__dict__])
 
-    def push_event(self, evnt: event.Event):
+    def push_event(self, evnt: event.Event) -> None:
         if "sig" not in evnt:
             evnt.sign()
         self.request.put(["EVENT", evnt.__dict__])

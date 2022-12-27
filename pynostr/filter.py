@@ -75,7 +75,7 @@ class Filter:
         self.ids.extend([evnt for evnt in events if isinstance(evnt, str)])
         return self
 
-    def mnimum_pow(self, difficulty: int):
+    def minimum_pow(self, difficulty: int):
         self.ids.extend(["0" * (difficulty // 4)])
         return self
 
