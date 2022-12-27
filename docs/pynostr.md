@@ -37,7 +37,7 @@ needed.
 **Arguments**:
 
 - `name` _str_ - filename to be used.
-- `*contact` - variable length of [contact](#pynostr.Contact)
+- `*contacts` - variable length of [contact](#pynostr.Contact)
 
 <a id="pynostr.load_contact"></a>
 
@@ -77,6 +77,19 @@ Push single event to a single relay and return responses.
 **Returns**:
 
 - `list` - relay response as python list.
+
+**Examples**:
+
+  Here is a snippet of python code to send a text note to a specific nostr
+  relay.
+  
+  ```python
+  >>> from pynostr import event
+  >>> e = event.Event.text_note("Hello nostr !").sign()
+  Type or paste your passphrase >
+  >>> send_event(e.__dict__, "wss://relay.nostr.info")
+  ['OK', '2781d[...]d28c9', True, '']
+  ```
 
 <a id="pynostr.to_bech32"></a>
 
