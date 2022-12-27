@@ -1,15 +1,33 @@
 
 # `pynostr`
 
-This python package aims to provide a simple python interface to interact with
-nostr environment.
+This python package aims to provide a simple interface to interact with nostr relays.
 
 ```python
 >>> from pynostr import event
 >>> e = event.Event.text_note("Hello nostr !").sign()
 Type or paste your passphrase >
 >>> e.send_to("wss://relay.nostr.info")
-['OK', '2781d[...]d28c9', True, '']
+['OK', '995b2c845315bd47d43cdff7a6f76f834943afa07144655247b8ceab6d6d2ecd', True, '']
+```
+
+## Basic text client subscriber
+
+```python
+>>> from pynostr import client
+>>> c = client.BaseThread("wss://relay.nostr.info")
+>>> c.subscribe(kinds=[0, 1, 3], limit=5)
+----- BEGIN -----
+[...]
+>>> # During a subscription, it is possible to send events:
+>>> c.send_event(kind=1, content="hello nostr !")
+Type or paste your passphrase >
+<dce2c201607e803384f51574c6a472a58fcfaf49bf32944c2e6caa9a72b87dad>[23:02:12](     1): hello nostr !
+['OK', '1c84a86b44716dbc66fb739ded71bd75213acb2f6d23a88e4a44dac09b277edb', True, '']
+[...]
+>>> # to close websocket, just unsubscribe
+>>> c.unsubscribe()
+----- END -----
 ```
 
 ## Documentation
