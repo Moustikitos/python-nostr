@@ -15,7 +15,7 @@ import websockets
 
 from pynostr import filter, event
 from datetime import datetime
-
+from collections import deque
 
 class AlreadySubcribed(Exception):
     """Exception used if a subscription is already running"""
@@ -109,11 +109,14 @@ Attributes:
         self.loop = asyncio.new_event_loop()
         self.textwidth = textwidth
         self.__filter: filter.Filter
+        self.__trace: deque
         self.__id = None
         self.__stop = threading.Event()
-        self.__skip = False
 
     def subscribe(self, cnf: dict = {}, **kw) -> None:
+        """
+Subscribe to a relay with custom filtering.
+"""
         # check if already runing a subscription
         if hasattr(self, "resp_daemon"):
             if self.resp_daemon.is_alive():
@@ -124,7 +127,7 @@ Attributes:
         self.__filter = filter.Filter(cnf, **kw)
         self.__id = os.urandom(16).hex()
         self.__stop.clear()
-        self.__skip = False
+        self.__trace = deque(maxlen=self.__filter.limit)
         # start response daemon
         self.resp_daemon = threading.Thread(target=self.manage_resp)
         self.resp_daemon.setDaemon(True)
@@ -159,16 +162,14 @@ Attributes:
             try:
                 async with websockets.connect(self.uri) as ws:
                     # store current websocket to be used in __close_check
-                    # for unsubscribing
+                    # for sendings
                     self.__ws = ws
                     # subscribe according to self.__filter
                     await ws.send(
                         json.dumps(["REQ", self.__id, self.__filter.apply()])
                     )
-                    # enter dialog loop
-                    if self.__skip is True:
-                        await ws.recv()
                     while not self.__stop.is_set():
+                        # assert is false if a CLOSE request is sent
                         assert await(self.__send_event())
                         self.response.put(
                             await asyncio.wait_for(
@@ -180,8 +181,6 @@ Attributes:
             except websockets.ConnectionClosed:
                 continue
             except TimeoutError:
-                self.__filter.limit = 1
-                self.__skip = True
                 continue
         # terminate self.resp_daemon
         self.response.put("STOP")
@@ -203,6 +202,12 @@ Attributes:
     def apply(self, data: list) -> None:
         if data[0] == "EVENT":
             evnt = data[-1]
+
+            _id = evnt["id"]
+            if _id in self.__trace:
+                return
+            self.__trace.appendleft(_id)
+
             prefix = " <%s>[%s](% 6d):" % (
                 evnt["pubkey"],
                 datetime.fromtimestamp(evnt["created_at"]).strftime("%X"),
@@ -215,13 +220,11 @@ Attributes:
             if content:
                 print_during_input(prefix)
                 for line in content:
-                    print_during_input(
-                        '\33[32m' +
-                        line.ljust(self.textwidth, " ") +
-                        '\33[0m'
-                    )
+                    print_during_input('\33[32m' + line + '\33[0m')
         else:
-            print_during_input('\33[42m' + str(data) + '\33[0m')
+            print_during_input(
+                '\33[33m' + str(data).rjust(self.textwidth, " ") + '\33[0m'
+            )
 
     def unsubscribe(self) -> None:
         self.request.put(["CLOSE", self.__id])
