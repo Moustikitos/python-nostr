@@ -83,7 +83,7 @@ def print_during_input(string: str) -> None:
 class BaseThread:
     """
 A Simple text client. It allows custom subscription to a specific relay.
-Sending and receiving is possible untl unsubscritpion.
+Sending and receiving is possible until unsubscritpion.
 
 Args:
     uri (str): the nostr relay url.
