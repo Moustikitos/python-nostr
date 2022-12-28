@@ -23,7 +23,7 @@ class AlreadySubcribed(Exception):
 
 if sys.platform == "win32":
     # enable the use of print_during_input with windows command
-    # copied from from websockets.__main__.py
+    #: copied from from websockets.__main__.py
     def win_enable_vt100() -> None:
         """
         Enable VT-100 for console output on Windows.
@@ -59,7 +59,7 @@ if sys.platform == "win32":
     win_enable_vt100()
 
 
-# copied from from websockets.__main__.py
+#: copied from from websockets.__main__.py
 def print_during_input(string: str) -> None:
     sys.stdout.write(
         # Save cursor position
@@ -82,10 +82,12 @@ def print_during_input(string: str) -> None:
 
 class BaseThread:
     """
+A Simple text client. It allows custom subscription to a specific relay.
+Sending and receiving is possible untl unsubscritpion.
+
 Args:
     uri (str): the nostr relay url.
     timeout (int): wait timeout in seconds [default = 5].
-
 Attributes:
     uri (str): the nostr relay url.
     timeout (str): wait timeout in seconds [default = 5].
@@ -104,6 +106,7 @@ Attributes:
         self.__filter: filter.Filter
         self.__id = None
         self.__stop = threading.Event()
+        self.__skip = False
 
     def subscribe(self, cnf: dict = {}, **kw) -> None:
         # check if already runing a subscription
@@ -116,7 +119,7 @@ Attributes:
         self.__filter = filter.Filter(cnf, **kw)
         self.__id = os.urandom(16).hex()
         self.__stop.clear()
-        # self.__skip = 0
+        self.__skip = False
         # start response daemon
         self.resp_daemon = threading.Thread(target=self.manage_resp)
         self.resp_daemon.setDaemon(True)
@@ -151,6 +154,8 @@ Attributes:
                         json.dumps(["REQ", self.__id, self.__filter.apply()])
                     )
                     # enter dialog loop
+                    if self.__skip is True:
+                        await ws.recv()
                     while not self.__stop.is_set():
                         await(self.__send_event())
                         self.response.put(
@@ -161,6 +166,8 @@ Attributes:
             except websockets.ConnectionClosed:
                 continue
             except TimeoutError:
+                self.__filter.limit=1
+                self.__skip = True
                 continue
         # terminate self.resp_daemon
         self.response.put("STOP")
