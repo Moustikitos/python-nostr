@@ -83,7 +83,7 @@ def print_during_input(string: str) -> None:
 class BaseThread:
     """
 A Simple text client. It allows custom subscription to a specific relay.
-Sending and receiving is possible until unsubscritpion.
+Sending and receiving is possible until subscription is overs.
 
 Args:
     uri (str): the nostr relay url.
@@ -138,16 +138,23 @@ Attributes:
         self.lstn_daemon.start()
 
     async def __send_event(self) -> None:
+        still = True
         if not self.request.empty():
             req = self.request.get()
             if req[0] == "CLOSE":
                 self.__stop.set()
+                still = False
             await asyncio.wait_for(
                 self.__ws.send(json.dumps(req)), timeout=self.timeout
             )
+        return still
 
     async def __loop(self) -> None:
-        print_during_input("----- BEGIN -----")
+        print_during_input(
+            '\33[7m' +
+            "BEGIN ".rjust(self.textwidth, " ") +
+            '\33[0m'
+        )
         while not self.__stop.is_set():
             try:
                 async with websockets.connect(self.uri) as ws:
@@ -162,12 +169,14 @@ Attributes:
                     if self.__skip is True:
                         await ws.recv()
                     while not self.__stop.is_set():
-                        await(self.__send_event())
+                        assert await(self.__send_event())
                         self.response.put(
                             await asyncio.wait_for(
                                 ws.recv(), timeout=self.timeout
                             )
                         )
+            except AssertionError:
+                continue
             except websockets.ConnectionClosed:
                 continue
             except TimeoutError:
@@ -183,14 +192,18 @@ Attributes:
             data = self.response.get()
             if data == "STOP":
                 exit = True
-                print_during_input("----- END -----")
+                print_during_input(
+                    '\33[7m' +
+                    "END ".rjust(self.textwidth, " ") +
+                    '\33[0m'
+                )
             else:
                 self.apply(json.loads(data))
 
     def apply(self, data: list) -> None:
         if data[0] == "EVENT":
             evnt = data[-1]
-            prefix = " <%s>[%s](% 6d) ---" % (
+            prefix = " <%s>[%s](% 6d):" % (
                 evnt["pubkey"],
                 datetime.fromtimestamp(evnt["created_at"]).strftime("%X"),
                 evnt["kind"]
@@ -202,9 +215,13 @@ Attributes:
             if content:
                 print_during_input(prefix)
                 for line in content:
-                    print_during_input(line.strip())
+                    print_during_input(
+                        '\33[32m' +
+                        line.ljust(self.textwidth, " ") +
+                        '\33[0m'
+                    )
         else:
-            print_during_input(data)
+            print_during_input('\33[42m' + str(data) + '\33[0m')
 
     def unsubscribe(self) -> None:
         self.request.put(["CLOSE", self.__id])
