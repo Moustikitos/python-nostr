@@ -88,21 +88,26 @@ Sending and receiving is possible untl unsubscritpion.
 Args:
     uri (str): the nostr relay url.
     timeout (int): wait timeout in seconds [default = 5].
+    textwidth (int): text width for the output [default = 100].
 Attributes:
     uri (str): the nostr relay url.
     timeout (str): wait timeout in seconds [default = 5].
+    textwidth (int): text width for the output [default = 100].
     response (queue.Queue): queue to store relay response.
     request (queue.Queue): queue to store client requests.
     loop (asyncio.BaseEventLoop): event loop used to un sending/listening
         process.
 """
 
-    def __init__(self, uri: str, timeout: int = 5) -> None:
+    def __init__(
+        self, uri: str, timeout: int = 5, textwidth: int = 100
+    ) -> None:
         self.uri = uri
         self.timeout = timeout
         self.response = queue.Queue()
         self.request = queue.Queue()
         self.loop = asyncio.new_event_loop()
+        self.textwidth = textwidth
         self.__filter: filter.Filter
         self.__id = None
         self.__stop = threading.Event()
@@ -166,7 +171,7 @@ Attributes:
             except websockets.ConnectionClosed:
                 continue
             except TimeoutError:
-                self.__filter.limit=1
+                self.__filter.limit = 1
                 self.__skip = True
                 continue
         # terminate self.resp_daemon
@@ -190,19 +195,14 @@ Attributes:
                 datetime.fromtimestamp(evnt["created_at"]).strftime("%X"),
                 evnt["kind"]
             )
-            prefix = prefix.rjust(150, "-")
+            prefix = prefix.rjust(self.textwidth, "-")
             content = textwrap.wrap(
-                evnt["content"], width=150, break_on_hyphens=True
+                evnt["content"], width=self.textwidth, break_on_hyphens=True
             )
             if content:
                 print_during_input(prefix)
                 for line in content:
                     print_during_input(line.strip())
-                #  + content[0])
-                # if len(content) > 1:
-                #     padding = " " * len(prefix)
-                #     for line in [li for li in content[1:] if li != ""]:
-                #         print_during_input(padding + line)
         else:
             print_during_input(data)
 
