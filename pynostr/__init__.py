@@ -83,13 +83,15 @@ Returns:
     list: relay response as python list.
 Examples:
     Here is a snippet of python code to send a text note to a specific nostr
-    relay.
+    relay:
 
     ```python
+    >>> import pynostr
+    >>> import asyncio
     >>> from pynostr import event
     >>> e = event.Event.text_note("Hello nostr !").sign()
     Type or paste your passphrase >
-    >>> send_event(e.__dict__, "wss://relay.nostr.info")
+    >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
     ['OK', '2781d[...]d28c9', True, '']
     ```
 """
@@ -187,8 +189,9 @@ Attributes:
     pubkey (property): nostr encoded public key.
     npub (property): bech32 encoded nostr public key.
     nsec (property): bech32 encoded nostr private key.
-
 Examples:
+    Bellow basic uses of [Keyring](#pynostr.Keyring):
+
     ```python
     >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
     >>> k.encpuk
@@ -199,12 +202,25 @@ Examples:
     'npub154y5yrfl8fjwtxz4arrypa7xz899v7ucvtay6y9t58r8d2nsxmzsvad8yf'
     >>> k.nsec
     'nsec1mvqqm229tvkd4j395g76l2deumcwachl6lup4xyp0k76gyw6ztdsrqdvvu'
-    >>> sig = k.sign(b"simple message").raw()
-    >>> k.verify(b"simple message", sig)
+    >>> sig = k.sign("simple message").raw()
+    >>> k.verify("simple message", sig)
     True
-    >>> k.verify(b"other message", sig)
+    >>> k.verify("other message", sig)
     False
     ```
+
+    [Keyring](#pynostr.Keyring) can also be used to sign events like so:
+
+    ```python
+    >>> import pynostr
+    >>> import asyncio
+    >>> from pynostr import event
+    >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+    >>> e = event.Event.text_note("Hello nostr !").sign(k)
+    >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
+    ['OK', '0459b[...]f2e99', True, '']
+    ```
+
 """
 
     @property

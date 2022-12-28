@@ -81,13 +81,15 @@ Push single event to a single relay and return responses.
 **Examples**:
 
   Here is a snippet of python code to send a text note to a specific nostr
-  relay.
+  relay:
   
   ```python
+  >>> import pynostr
+  >>> import asyncio
   >>> from pynostr import event
   >>> e = event.Event.text_note("Hello nostr !").sign()
   Type or paste your passphrase >
-  >>> send_event(e.__dict__, "wss://relay.nostr.info")
+  >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
   ['OK', '2781d[...]d28c9', True, '']
   ```
 
@@ -219,6 +221,7 @@ class Keyring(cSecp256k1.Schnorr)
 
 **Examples**:
 
+  Bellow basic uses of [Keyring](#pynostr.Keyring):
   
   ```python
   >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
@@ -235,5 +238,17 @@ class Keyring(cSecp256k1.Schnorr)
   True
   >>> k.verify(b"other message", sig)
   False
+  ```
+  
+  [Keyring](#pynostr.Keyring) can also be used to sign events like so:
+  
+  ```python
+  >>> import pynostr
+  >>> import asyncio
+  >>> from pynostr import event
+  >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+  >>> e = event.Event.text_note("Hello nostr !").sign(k)
+  >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
+  ['OK', '0459b[...]f2e99', True, '']
   ```
 
