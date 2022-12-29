@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This module provides a simple text client to subscribe to a specific relay.
+This module provides a simple text client for sending/listening to a specfic
+relay.
 """
 
 import os
@@ -16,6 +17,15 @@ import websockets
 from pynostr import filter, event
 from datetime import datetime
 from collections import deque
+from enum import StrEnum
+
+
+class Style(StrEnum):
+    END = '\33[0m'
+    INV = '\33[7m'
+    YEL = '\33[33m'
+    GRN = '\33[32m'
+
 
 class AlreadySubcribed(Exception):
     """Exception used if a subscription is already running"""
@@ -83,7 +93,7 @@ def print_during_input(string: str) -> None:
 class BaseThread:
     """
 A Simple text client. It allows custom subscription to a specific relay.
-Sending and receiving is possible until subscription is overs.
+Sending and receiving is possible until subscription is over.
 
 Args:
     uri (str): the nostr relay url.
@@ -115,7 +125,8 @@ Attributes:
 
     def subscribe(self, cnf: dict = {}, **kw) -> None:
         """
-Subscribe to a relay with custom filtering.
+Subscribe to relay with custom filtering. See [filter](filter#Filter) class
+for basic uses.
 """
         # check if already runing a subscription
         if hasattr(self, "resp_daemon"):
@@ -129,7 +140,7 @@ Subscribe to a relay with custom filtering.
         self.__stop.clear()
         self.__trace = deque(maxlen=self.__filter.limit)
         # start response daemon
-        self.resp_daemon = threading.Thread(target=self.manage_resp)
+        self.resp_daemon = threading.Thread(target=self.__manage_resp)
         self.resp_daemon.setDaemon(True)
         self.resp_daemon.start()
         # start websocket loop daemon
@@ -154,9 +165,7 @@ Subscribe to a relay with custom filtering.
 
     async def __loop(self) -> None:
         print_during_input(
-            '\33[7m' +
-            "BEGIN ".rjust(self.textwidth, " ") +
-            '\33[0m'
+            Style.INV + "BEGIN ".rjust(self.textwidth, " ") + Style.END
         )
         while not self.__stop.is_set():
             try:
@@ -185,21 +194,25 @@ Subscribe to a relay with custom filtering.
         # terminate self.resp_daemon
         self.response.put("STOP")
 
-    def manage_resp(self) -> None:
+    def __manage_resp(self) -> None:
         exit = False
         while not exit:
             data = self.response.get()
             if data == "STOP":
                 exit = True
                 print_during_input(
-                    '\33[7m' +
-                    "END ".rjust(self.textwidth, " ") +
-                    '\33[0m'
+                    Style.INV + "END ".rjust(self.textwidth, " ") + Style.END
                 )
             else:
                 self.apply(json.loads(data))
 
     def apply(self, data: list) -> None:
+        """
+This function operates with listened data.
+
+Arguments:
+    data (list): relay response as python object.
+"""
         if data[0] == "EVENT":
             evnt = data[-1]
 
@@ -220,22 +233,26 @@ Subscribe to a relay with custom filtering.
             if content:
                 print_during_input(prefix)
                 for line in content:
-                    print_during_input('\33[32m' + line + '\33[0m')
+                    print_during_input(Style.GRN + line + Style.END)
         else:
             print_during_input(
-                '\33[33m' + str(data).rjust(self.textwidth, " ") + '\33[0m'
+                Style.YEL + str(data).rjust(self.textwidth, " ") + Style.END
             )
 
     def unsubscribe(self) -> None:
+        """
+Stop running subscription. Once listening daemons cleanly exited, a new
+subscription is possible.
+"""
         self.request.put(["CLOSE", self.__id])
 
     def send_event(self, cnf: dict = {}, **kw) -> None:
         params = dict(cnf, **kw)
         prvkey = params.pop("prvkey", None)
-        evnt = event.Event(**params).sign(prvkey=prvkey)
-        self.request.put(["EVENT", evnt.__dict__])
+        evnt = event.Event(**params)
+        self.push_event(evnt, prvkey)
 
-    def push_event(self, evnt: event.Event) -> None:
+    def push_event(self, evnt: event.Event, prvkey=None) -> None:
         if "sig" not in evnt:
-            evnt.sign()
+            evnt.sign(prvkey)
         self.request.put(["EVENT", evnt.__dict__])
