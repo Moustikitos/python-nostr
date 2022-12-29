@@ -42,6 +42,13 @@ Sending and receiving is possible until subscription is over.
 - `loop` _asyncio.BaseEventLoop_ - event loop used to un sending/listening
   process.
 
+**Examples**:
+
+  ```python
+  >>> from pynostr import client
+  >>> c = client.BaseThread("wss://relay.nostr.info")
+  ```
+
 <a id="pynostr.client.BaseThread.subscribe"></a>
 
 #### subscribe
@@ -53,6 +60,18 @@ def subscribe(cnf: dict = {}, **kw) -> None
 Subscribe to relay with custom filtering. See [filter](filter#Filter) class
 for basic uses.
 
+**Arguments**:
+
+- `cnf` _dict_ - key-value pairs.
+- `**kw` - arbitrary keyword arguments.
+
+**Examples**:
+
+  ```python
+  >>> # subscribe to all messages kind 1, 2 or 3 getting the last 5 ones.
+  >>> c.subscribe(kinds=[0, 1, 3], limit=5)
+  ```
+
 <a id="pynostr.client.BaseThread.apply"></a>
 
 #### apply
@@ -61,11 +80,14 @@ for basic uses.
 def apply(data: list) -> None
 ```
 
-This function operates with listened data.
+This function operates with listened data. Data is loaded from json string and
+is either `EVENT`, `NOTICE`, `OK` or `EOSE` messages as specified in
+[nostr protocol](https://github.com/nostr-protocol/nips#relay-to-client).
 
 **Arguments**:
 
-- `data` _list_ - relay response as python object.
+- `data` _list_ - relay response as python object. First item of data is either
+  `EVENT`, `NOTICE`, `OK` or `EOSE` word.
 
 <a id="pynostr.client.BaseThread.unsubscribe"></a>
 
@@ -75,6 +97,43 @@ This function operates with listened data.
 def unsubscribe() -> None
 ```
 
-Stop running subscription. Once listening daemons cleanly exited, a new
-subscription is possible.
+Stop the running subscription. Once listening daemons cleanly exited, a new
+subscription is possible. This function sends a `CLOSE` event to stop the
+thread cleanly.
+
+**Examples**:
+
+  ```python
+  >>> # to close websocket, just unsubscribe
+  >>> c.unsubscribe()
+  ```
+
+<a id="pynostr.client.BaseThread.send_event"></a>
+
+#### send\_event
+
+```python
+def send_event(cnf: dict = {}, **kw) -> None
+```
+
+Create and send event during a subscription. See [event](event#Event) class
+for basic uses. Event is sent when a slot is available (ie timeout occured or
+`recv` completed).
+
+**Arguments**:
+
+- `cnf` _dict_ - key-value pairs.
+- `**kw` - arbitrary keyword arguments.
+
+**Examples**:
+
+  ```python
+  >>> # During a subscription, it is possible to send events:
+  >>> c.send_event(kind=1, content="hello nostr !")
+  Type or paste your passphrase >
+  [...]
+  <dce2c[...]87dad>[23:02:12](     1):
+  hello nostr !
+  ['OK', '1c84a[...]77edb', True, '']
+  ```
 

@@ -21,10 +21,10 @@ from enum import StrEnum
 
 
 class Style(StrEnum):
-    END = '\33[0m'
-    INV = '\33[7m'
-    YEL = '\33[33m'
-    GRN = '\33[32m'
+    END = '\33[0m'  # stop line color style (return to default)
+    INV = '\33[7m'  # inverse color scheme
+    YEL = '\33[33m'  # set line color to yellow
+    GRN = '\33[32m'  # set line color to green
 
 
 class AlreadySubcribed(Exception):
@@ -107,6 +107,11 @@ Attributes:
     request (queue.Queue): queue to store client requests.
     loop (asyncio.BaseEventLoop): event loop used to un sending/listening
         process.
+Examples:
+    ```python
+    >>> from pynostr import client
+    >>> c = client.BaseThread("wss://relay.nostr.info")
+    ```
 """
 
     def __init__(
@@ -127,6 +132,15 @@ Attributes:
         """
 Subscribe to relay with custom filtering. See [filter](filter#Filter) class
 for basic uses.
+
+Arguments:
+    cnf (dict): key-value pairs.
+    **kw: arbitrary keyword arguments.
+Examples:
+    ```python
+    >>> # subscribe to all messages kind 1, 2 or 3 getting the last 5 ones.
+    >>> c.subscribe(kinds=[0, 1, 3], limit=5)
+    ```
 """
         # check if already runing a subscription
         if hasattr(self, "resp_daemon"):
@@ -208,10 +222,13 @@ for basic uses.
 
     def apply(self, data: list) -> None:
         """
-This function operates with listened data.
+This function operates with listened data. Data is loaded from json string and
+is either `EVENT`, `NOTICE`, `OK` or `EOSE` messages as specified in
+[nostr protocol](https://github.com/nostr-protocol/nips#relay-to-client).
 
 Arguments:
-    data (list): relay response as python object.
+    data (list): relay response as python object. First item of data is either
+        `EVENT`, `NOTICE`, `OK` or `EOSE` word.
 """
         if data[0] == "EVENT":
             evnt = data[-1]
@@ -241,12 +258,38 @@ Arguments:
 
     def unsubscribe(self) -> None:
         """
-Stop running subscription. Once listening daemons cleanly exited, a new
-subscription is possible.
+Stop the running subscription. Once listening daemons cleanly exited, a new
+subscription is possible. This function sends a `CLOSE` event to stop the
+thread cleanly.
+
+Examples:
+    ```python
+    >>> # to close websocket, just unsubscribe
+    >>> c.unsubscribe()
+    ```
 """
         self.request.put(["CLOSE", self.__id])
 
     def send_event(self, cnf: dict = {}, **kw) -> None:
+        """
+Create and send event during a subscription. See [event](event#Event) class
+for basic uses. Event is sent when a slot is available (ie timeout occured or
+`recv` completed).
+
+Arguments:
+    cnf (dict): key-value pairs.
+    **kw: arbitrary keyword arguments.
+Examples:
+    ```python
+    >>> # During a subscription, it is possible to send events:
+    >>> c.send_event(kind=1, content="hello nostr !")
+    Type or paste your passphrase >
+    [...]
+    <dce2c[...]87dad>[23:02:12](     1):
+    hello nostr !
+    ['OK', '1c84a[...]77edb', True, '']
+    ```
+"""
         params = dict(cnf, **kw)
         prvkey = params.pop("prvkey", None)
         evnt = event.Event(**params)
