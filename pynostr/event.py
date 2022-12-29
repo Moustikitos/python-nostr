@@ -11,6 +11,7 @@ import pynostr
 import asyncio
 import cSecp256k1
 
+from typing import Any
 from enum import IntEnum
 
 
@@ -136,21 +137,44 @@ Attributes:
 """
 
     @staticmethod
-    def set_metadata(name: str, about: str, picture: str, prvkey: str = None):
-        e = Event(
-            kind=EventType.SET_METADATA,
-            content={"name": name, "about": about, "picture": picture}
-        )
-        if prvkey is not None:
-            e.sign(prvkey)
-        return e
+    def from_relay(data: str):
+        return Event(json.loads(data[-1]))
 
     @staticmethod
-    def text_note(content: str, prvkey: str = None):
-        e = Event(kind=EventType.TEXT_NOTE, content=content)
-        if prvkey is not None:
-            e.sign(prvkey)
-        return e
+    def set_metadata(
+        name: str, about: str, picture: str,
+        prvkey: Any[str, pynostr.Keyring] = None
+    ):
+        """
+Create a `set metadata` event.
+
+Arguments:
+    name (str): nickname to be used by user.
+    about (str): few words about user.
+    picture (str): avatar url (IPFS, URL or base64 data).
+    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+        given, it will be asked on terminal.
+Returns:
+    event.Event: signed event instance.
+"""
+        return Event(
+            kind=EventType.SET_METADATA,
+            content={"name": name, "about": about, "picture": picture}
+        ).sign(prvkey)
+
+    @staticmethod
+    def text_note(content: str, prvkey: Any[str, pynostr.Keyring] = None):
+        """
+Create a `text note` event.
+
+Arguments:
+    content (str): the text note itself.
+    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+        given, it will be asked on terminal.
+Returns:
+    event.Event: signed event instance.
+"""
+        return Event(kind=EventType.TEXT_NOTE, content=content).sign(prvkey)
 
     def __init__(self, cnf: dict = {}, **kw) -> None:
         self.id = None
@@ -164,6 +188,13 @@ Attributes:
         self.load(cnf, **kw)
 
     def load(self, cnf: dict = {}, **kw) -> None:
+        """
+Initialize instance from python data. Only valid Event attributes will be set.
+
+Arguments:
+    cnf (dict): key-value pairs.
+    **kw: arbitrary keyword arguments.
+"""
         params = dict(cnf, **kw)
         if len(params):
             for key in [k for k in self.__dict__ if k in params]:
@@ -174,6 +205,15 @@ Attributes:
                 setattr(self, key, value)
 
     def serialize(self) -> str:
+        """
+Serialize instance according to [NIP-01](
+    https://github.com/nostr-protocol/nips/blob/master/01.md
+)
+
+Returns:
+    str: serialization of event (UTF-8 JSON-serialized string with no white
+        space or line breaks).
+"""
         missings = [
             k for k, v in self.__dict__.items()
             if v is None and k not in ["id", "sig"]
@@ -196,9 +236,26 @@ Attributes:
         ).encode("utf-8")
 
     def identify(self) -> None:
+        """
+Compute instance id according to [NIP-01](
+    https://github.com/nostr-protocol/nips/blob/master/01.md
+)
+
+Returns:
+    str: event id.
+"""
         self.id = hashlib.sha256(self.serialize()).hexdigest()
 
     def verify(self) -> bool:
+        """
+Check integrity of event and signature.
+
+Returns:
+    bool: `True` if event is genuine, `False` other else
+Raises:
+    IntegrityError: if id does not match with the event. This is to prevent
+        issue [#59](https://github.com/fiatjaf/nostr-tools/issues/59)
+"""
         # https://github.com/fiatjaf/nostr-tools/issues/59
         # have to check integrity and genuinity of event
         if self.id != hashlib.sha256(self.serialize()).hexdigest():
@@ -215,7 +272,16 @@ Attributes:
                 return True
         return False
 
-    def sign(self, prvkey=None) -> object:
+    def sign(self, prvkey:  Any[str, pynostr.Keyring] = None) -> object:
+        """
+Sign event.
+
+Arguments:
+    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+        given, it will be asked on terminal.
+Returns:
+    event.Event: signed event instance.
+"""
         if isinstance(prvkey, pynostr.Keyring):
             keyring = prvkey
         else:
@@ -230,8 +296,16 @@ Attributes:
 
         return self
 
-    # https://github.com/nostr-protocol/nips/blob/master/13.md
+    # 
     def set_pow_tag(self, difficulty: int = 0) -> list:
+        """
+Compute proof of work tag according to [NIP-13](
+https://github.com/nostr-protocol/nips/blob/master/13.md).
+
+Arguments:
+    difficulty (int): level of difficulty to compute the nonce. Number of
+    leading `0` for the id is 4 time less than difficulty value.
+"""
         # 4 bits per byte so for one 0 divide by 4
         leading_0 = "0" * (difficulty // 4)
         n_0 = len(leading_0)
