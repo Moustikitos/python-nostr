@@ -115,14 +115,13 @@ class TagList(list):
 # https://github.com/nostr-protocol/nips/blob/master/01.md
 class Event:
     """
-Nostr event object implementation accordnig to **[NIPS-01](
+Nostr event object implementation accordnig to [NIP-01](
     https://github.com/nostr-protocol/nips/blob/master/01.md
-)**.
+).
 
-Args:
+Arguments:
     cnf (dict): key-value pairs.
     **kw: arbitrary keyword arguments.
-
 Attributes:
     id (str): hexadecimal string that is computed over the UTF-8-serialized
         string (with no white space or line breaks).
@@ -217,11 +216,14 @@ Attributes:
         return False
 
     def sign(self, prvkey=None) -> object:
-        if prvkey and HEX64.match(prvkey):
-            prvkey = int(prvkey, base=16)
-        keyring = cSecp256k1.Schnorr(prvkey)
-        self.pubkey = keyring.puk().x.decode("utf-8")
+        if isinstance(prvkey, pynostr.Keyring):
+            keyring = prvkey
+        else:
+            if prvkey and HEX64.match(prvkey):
+                prvkey = int(prvkey, base=16)
+            keyring = pynostr.Keyring(prvkey)
 
+        self.pubkey = keyring.pubkey
         serial = self.serialize()
         self.id = hashlib.sha256(serial).hexdigest()
         self.sig = keyring.sign(serial).raw().decode("utf-8")
