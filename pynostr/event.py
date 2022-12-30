@@ -159,7 +159,7 @@ Arguments:
     prvkey (str or pynostr.Keyring): private key to sign the message. if not
         given, it will be asked on terminal.
 Returns:
-    event.Event: signed event instance.
+    event.Metadata: signed event instance.
 """
         return Metadata(
             kind=EventType.SET_METADATA,
@@ -279,7 +279,7 @@ Raises:
 Sign event.
 
 Arguments:
-    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+    prvkey (str or pynostr.Keyring): private key to sign the message. If not
         given, it will be asked on terminal.
 Returns:
     event.Event: signed event instance.
@@ -336,9 +336,10 @@ Arguments:
 class Metadata(Event):
     """
 Metadata specific Event subclass. It defines metadata fields as property with
-getter and setter. Values are extracted from content string or injected n it.
+getter and setter. Values are extracted from content string or injected in it.
 
 Examples:
+
     ```python
     >>> e = event.Event.set_metadata(
     ...     name="toons", about="None", picture="None", prvkey=k
