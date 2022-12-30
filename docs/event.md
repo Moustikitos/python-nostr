@@ -251,15 +251,14 @@ getter and setter. Values are extracted from content string or injected in it.
 
 **Examples**:
 
-  
   ```python
   >>> e = event.Event.set_metadata(
   ...     name="toons", about="None", picture="None", prvkey=k
   ... )
-  >>> e.content
-- `'{"name"` - "toons", "about": "None", "picture": "None"}'
+  >>> print(e.content)
+- `{'name'` - 'toons', 'about': 'None', 'picture': 'None'}
   >>> e.about = ""
-  >>> e.content
-- `'{"name"` - "toons", "about": "", "picture": "None"}'
+  >>> prnt(e.content)
+- `{'name'` - 'toons', 'about': '', 'picture': 'None'}
   ```
 
