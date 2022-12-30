@@ -161,9 +161,12 @@ Arguments:
 Returns:
     event.Event: signed event instance.
 """
-        return Event(
+        return Metadata(
             kind=EventType.SET_METADATA,
-            content={"name": name, "about": about, "picture": picture}
+            content=json.dumps(
+                {"name": name, "about": about, "picture": picture},
+                separators=(",", ":")
+            )
         ).sign(prvkey)
 
     @staticmethod
@@ -241,12 +244,9 @@ Returns:
 
     def identify(self) -> None:
         """
-Compute instance id according to [NIP-01](
+Compute id attribute according to [NIP-01](
     https://github.com/nostr-protocol/nips/blob/master/01.md
-)
-
-Returns:
-    str: event id.
+).
 """
         self.id = hashlib.sha256(self.serialize()).hexdigest()
 
@@ -255,13 +255,11 @@ Returns:
 Check integrity of event and signature.
 
 Returns:
-    bool: `True` if event is genuine, `False` other else
+    bool: `True` if event is genuine, `False` other else.
 Raises:
     IntegrityError: if id does not match with the event. This is to prevent
-        issue [#59](https://github.com/fiatjaf/nostr-tools/issues/59)
+        issue [#59](https://github.com/fiatjaf/nostr-tools/issues/59).
 """
-        # https://github.com/fiatjaf/nostr-tools/issues/59
-        # have to check integrity and genuinity of event
         if self.id != hashlib.sha256(self.serialize()).hexdigest():
             raise IntegrityError()
         if self.sig is not None:
@@ -300,7 +298,6 @@ Returns:
 
         return self
 
-    # 
     def set_pow_tag(self, difficulty: int = 0) -> list:
         """
 Compute proof of work tag according to [NIP-13](
@@ -334,3 +331,48 @@ Arguments:
 
     def send_to(self, url: str):
         return asyncio.run(pynostr.send_event(self.__dict__, url))
+
+
+class Metadata(Event):
+    """
+Metadata specific Event subclass. It defines metadata fields as property with
+getter and setter. Values are extracted from content string or injected n it.
+
+Examples:
+    ```python
+    >>> e = event.Event.set_metadata(
+    ...     name="toons", about="None", picture="None", prvkey=k
+    ... )
+    >>> e.content
+    '{"name": "toons", "about": "None", "picture": "None"}'
+    >>> e.about = ""
+    >>> e.content
+    '{"name": "toons", "about": "", "picture": "None"}'
+    ```
+"""
+
+    @property
+    def name(self):
+        return json.loads(self.content).get("name", "")
+
+    @name.setter
+    def name(self, value):
+        self.content = json.dumps(dict(json.loads(self.content), name=value))
+
+    @property
+    def about(self):
+        return json.loads(self.content).get("about", "")
+
+    @about.setter
+    def about(self, value):
+        self.content = json.dumps(dict(json.loads(self.content), about=value))
+
+    @property
+    def picture(self):
+        return json.loads(self.content).get("picture", "")
+
+    @picture.setter
+    def picture(self, value):
+        self.content = json.dumps(
+            dict(json.loads(self.content), picture=value)
+        )

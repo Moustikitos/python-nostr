@@ -54,6 +54,16 @@ class GenuinityError(Exception)
 
 Exception used on signature mismatch
 
+<a id="pynostr.event.OrphanEvent"></a>
+
+## OrphanEvent Objects
+
+```python
+class OrphanEvent(Exception)
+```
+
+Exception used when public key owner is missing
+
 <a id="pynostr.event.Event"></a>
 
 ## Event Objects
@@ -93,7 +103,7 @@ https://github.com/nostr-protocol/nips/blob/master/01.md
 def set_metadata(name: str,
                  about: str,
                  picture: str,
-                 prvkey: Any[str, pynostr.Keyring] = None)
+                 prvkey: Union[str, pynostr.Keyring] = None)
 ```
 
 Create a `set metadata` event.
@@ -116,7 +126,7 @@ Create a `set metadata` event.
 
 ```python
 @staticmethod
-def text_note(content: str, prvkey: Any[str, pynostr.Keyring] = None)
+def text_note(content: str, prvkey: Union[str, pynostr.Keyring] = None)
 ```
 
 Create a `text note` event.
@@ -171,13 +181,9 @@ https://github.com/nostr-protocol/nips/blob/master/01.md
 def identify() -> None
 ```
 
-Compute instance id according to [NIP-01](
-https://github.com/nostr-protocol/nips/blob/master/01.md
-)
-
-**Returns**:
-
-- `str` - event id.
+Compute id attribute according to [NIP-01](
+    https://github.com/nostr-protocol/nips/blob/master/01.md
+).
 
 <a id="pynostr.event.Event.verify"></a>
 
@@ -191,19 +197,19 @@ Check integrity of event and signature.
 
 **Returns**:
 
-- `bool` - `True` if event is genuine, `False` other else
+- `bool` - `True` if event is genuine, `False` other else.
 
 **Raises**:
 
 - `IntegrityError` - if id does not match with the event. This is to prevent
-  issue [`59`](https://github.com/fiatjaf/nostr-tools/issues/59)
+  issue [`59`](https://github.com/fiatjaf/nostr-tools/issues/59).
 
 <a id="pynostr.event.Event.sign"></a>
 
 #### sign
 
 ```python
-def sign(prvkey: Any[str, pynostr.Keyring] = None) -> object
+def sign(prvkey: Union[str, pynostr.Keyring] = None) -> object
 ```
 
 Sign event.
@@ -230,6 +236,29 @@ https://github.com/nostr-protocol/nips/blob/master/13.md).
 
 **Arguments**:
 
-- `difficulty` _int_ - level of difficulty to compute the nonce. Number of
-  leading `0` for the id is 4 time less than difficulty value.
+- `difficulty` _int_ - level of difficulty to compute the nonce.
+
+<a id="pynostr.event.Metadata"></a>
+
+## Metadata Objects
+
+```python
+class Metadata(Event)
+```
+
+Metadata specific Event subclass. It defines metadata fields as property with
+getter and setter. Values are extracted from content string or injected n it.
+
+**Examples**:
+
+  ```python
+  >>> e = event.Event.set_metadata(
+  ...     name="toons", about="None", picture="None", prvkey=k
+  ... )
+  >>> e.content
+- `'{"name"` - "toons", "about": "None", "picture": "None"}'
+  >>> e.about = ""
+  >>> e.content
+- `'{"name"` - "toons", "about": "", "picture": "None"}'
+  ```
 
