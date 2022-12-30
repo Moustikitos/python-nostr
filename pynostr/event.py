@@ -339,16 +339,15 @@ Metadata specific Event subclass. It defines metadata fields as property with
 getter and setter. Values are extracted from content string or injected in it.
 
 Examples:
-
     ```python
     >>> e = event.Event.set_metadata(
     ...     name="toons", about="None", picture="None", prvkey=k
     ... )
     >>> e.content
-    '{"name": "toons", "about": "None", "picture": "None"}'
+    "{'name': 'toons', 'about': 'None', 'picture': 'None'}"
     >>> e.about = ""
     >>> e.content
-    '{"name": "toons", "about": "", "picture": "None"}'
+    "{'name': 'toons', 'about': '', 'picture': 'None'}"
     ```
 """
 
