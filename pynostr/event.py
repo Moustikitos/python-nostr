@@ -11,7 +11,7 @@ import pynostr
 import asyncio
 import cSecp256k1
 
-from typing import Any
+from typing import Union
 from enum import IntEnum
 
 
@@ -38,6 +38,10 @@ class IntegrityError(Exception):
 
 class GenuinityError(Exception):
     """Exception used on signature mismatch"""
+
+
+class OrphanEvent(Exception):
+    """Exception used when public key owner is missing"""
 
 
 class EventType(IntEnum):
@@ -143,7 +147,7 @@ Attributes:
     @staticmethod
     def set_metadata(
         name: str, about: str, picture: str,
-        prvkey: Any[str, pynostr.Keyring] = None
+        prvkey: Union[str, pynostr.Keyring] = None
     ):
         """
 Create a `set metadata` event.
@@ -163,7 +167,7 @@ Returns:
         ).sign(prvkey)
 
     @staticmethod
-    def text_note(content: str, prvkey: Any[str, pynostr.Keyring] = None):
+    def text_note(content: str, prvkey: Union[str, pynostr.Keyring] = None):
         """
 Create a `text note` event.
 
@@ -272,7 +276,7 @@ Raises:
                 return True
         return False
 
-    def sign(self, prvkey:  Any[str, pynostr.Keyring] = None) -> object:
+    def sign(self, prvkey: Union[str, pynostr.Keyring] = None) -> object:
         """
 Sign event.
 
@@ -303,28 +307,30 @@ Compute proof of work tag according to [NIP-13](
 https://github.com/nostr-protocol/nips/blob/master/13.md).
 
 Arguments:
-    difficulty (int): level of difficulty to compute the nonce. Number of
-    leading `0` for the id is 4 time less than difficulty value.
+    difficulty (int): level of difficulty to compute the nonce.
 """
-        # 4 bits per byte so for one 0 divide by 4
-        leading_0 = "0" * (difficulty // 4)
-        n_0 = len(leading_0)
-        # compute seiral with void nonce tag
-        serial = json.dumps(
-            [
-                0, self.pubkey, self.created_at, self.kind,
-                self.tags + [["nonce", "%s", "%s" % (n_0 * 4)], ],
-                self.content
-            ], separators=(",", ":"), ensure_ascii=False
-        )
-        # local shortcut to speed up while loop
-        enc = str.encode
-        sha256 = hashlib.sha256
-        nonce = 0
-        while not sha256(enc(serial % nonce)).hexdigest()[:n_0] == leading_0:
-            nonce += 1
+        if self.pubkey:
+            # compute 256 bit mask associated to difficulty
+            mask = int("1" * difficulty, base=2) << (256 - difficulty)
+            # compute seiral with void nonce tag
+            serial = json.dumps(
+                [
+                    0, self.pubkey, self.created_at, self.kind,
+                    self.tags + [["nonce", "%s", f"{difficulty}"], ],
+                    self.content
+                ], separators=(",", ":"), ensure_ascii=False
+            )
+            # local shortcut to speed up while loop
+            enc = str.encode
+            sha256 = hashlib.sha256
+            nonce = 0
+            while int(sha256(enc(serial % nonce)).hexdigest(), base=16) & mask:
+                nonce += 1
 
-        self.tags.append(["nonce", "%s" % nonce, "%s" % (n_0 * 4)])
+            self.tags.append(["nonce", "%s" % nonce, "%s" % (difficulty)])
+            self.identify()
+        else:
+            raise OrphanEvent("No owner identified, missing public key")
 
     def send_to(self, url: str):
         return asyncio.run(pynostr.send_event(self.__dict__, url))
