@@ -36,10 +36,15 @@ class Filter:
         if len(params):
             for key in [k for k in self.__dict__ if k in params]:
                 value = params[key]
+                key = key.replace("_", "#")
+
                 if key == "#e":
                     key = "events"
                 elif key == "#p":
                     key = "pubkeys"
+                elif key.startswith("#"):
+                    self.__dict__[key] = self.__dict__.get(key, [])
+
                 if key in ["since", "until", "limit"]:
                     setattr(self, key, value)
                 else:
@@ -67,6 +72,10 @@ class Filter:
         self.authors.extend([puk for puk in pubkeys if HEX64.match(puk)])
         return self
 
+    def sent_to(self, *pubkeys):
+        self.pubkeys.extend([puk for puk in pubkeys if HEX64.match(puk)])
+        return self
+
     def relative_to(self, *events):
         self.events.extend([evnt for evnt in events if HEX64.match(evnt)])
         return self
@@ -76,7 +85,7 @@ class Filter:
         return self
 
     def minimum_pow(self, difficulty: int):
-        self.ids.extend(["0" * (difficulty // 4)])
+        self.ids.extend(["0" * difficulty // 4])
         return self
 
     def count(self, limit=10):
