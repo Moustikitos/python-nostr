@@ -18,6 +18,9 @@ from enum import IntEnum
 HEX = re.compile("^[0-9a-f]*$")
 HEX64 = re.compile("^[0-9a-f]{64}$")
 HEX128 = re.compile("^[0-9a-f]{128}$")
+EMAIL = re.compile(
+    r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+'
+)
 
 
 class EmptyTagException(Exception):
@@ -376,3 +379,14 @@ Examples:
         self.content = json.dumps(
             dict(json.loads(self.content), picture=value)
         )
+
+    @property
+    def nip05(self):
+        return json.loads(self.content).get("nip05", None)
+
+    @nip05.setter
+    def nip05(self, value):
+        if EMAIL.match(value):
+            self.content = json.dumps(
+                dict(json.loads(self.content), nip05=value)
+            )
