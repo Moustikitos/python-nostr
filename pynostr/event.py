@@ -47,6 +47,10 @@ class OrphanEvent(Exception):
     """Exception used when public key owner is missing"""
 
 
+class Nip05FormatError(Exception):
+    """Exception used when NIP 05 format is not correct"""
+
+
 class EventType(IntEnum):
     # https://github.com/nostr-protocol/nips/blob/master/01.md
     SET_METADATA = 0
@@ -355,38 +359,55 @@ Examples:
 """
 
     @property
-    def name(self):
+    def name(self) -> str:
         return json.loads(self.content).get("name", "")
 
     @name.setter
-    def name(self, value):
+    def name(self, value: str):
         self.content = json.dumps(dict(json.loads(self.content), name=value))
 
     @property
-    def about(self):
+    def about(self) -> str:
         return json.loads(self.content).get("about", "")
 
     @about.setter
-    def about(self, value):
+    def about(self, value: str):
         self.content = json.dumps(dict(json.loads(self.content), about=value))
 
     @property
-    def picture(self):
+    def picture(self) -> str:
         return json.loads(self.content).get("picture", "")
 
     @picture.setter
-    def picture(self, value):
+    def picture(self, value: str):
         self.content = json.dumps(
             dict(json.loads(self.content), picture=value)
         )
 
     @property
-    def nip05(self):
+    def nip05(self) -> str:
         return json.loads(self.content).get("nip05", None)
 
     @nip05.setter
-    def nip05(self, value):
+    def nip05(self, value: str):
         if EMAIL.match(value):
             self.content = json.dumps(
                 dict(json.loads(self.content), nip05=value)
             )
+        else:
+            raise Nip05FormatError(
+                f"{value} does not match NIP 05 specification"
+            )
+
+    def add_value(self, key: str, value: str):
+        self.content = json.dumps(
+            dict(json.loads(self.content), **{key: value})
+        )
+
+    def add_values(self, cnf: dict = {}, **kw):
+        self.content = json.dumps(
+            dict(json.loads(self.content), **dict(cnf, **kw))
+        )
+
+    def get(self, fieldname: str) -> str:
+        return json.loads(self.content).get(fieldname, "")
