@@ -216,8 +216,9 @@ Examples:
     >>> import asyncio
     >>> from pynostr import event
     >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
-    >>> e = event.Event.text_note("Hello nostr !").sign(k)
-    >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
+    >>> e = event.Event(kind=1, "Hello nostr !")
+    >>> e.sign(k)
+    >>> e.send_to("wss://relay.nostr.info")
     ['OK', '0459b[...]f2e99', True, '']
     ```
 
