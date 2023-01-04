@@ -64,6 +64,16 @@ class OrphanEvent(Exception)
 
 Exception used when public key owner is missing
 
+<a id="pynostr.event.Nip05FormatError"></a>
+
+## Nip05FormatError Objects
+
+```python
+class Nip05FormatError(Exception)
+```
+
+Exception used when NIP 05 format is not correct
+
 <a id="pynostr.event.Event"></a>
 
 ## Event Objects

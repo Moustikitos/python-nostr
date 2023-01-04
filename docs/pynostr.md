@@ -233,10 +233,10 @@ class Keyring(cSecp256k1.Schnorr)
   'npub154y5yrfl8fjwtxz4arrypa7xz899v7ucvtay6y9t58r8d2nsxmzsvad8yf'
   >>> k.nsec
   'nsec1mvqqm229tvkd4j395g76l2deumcwachl6lup4xyp0k76gyw6ztdsrqdvvu'
-  >>> sig = k.sign(b"simple message").raw()
-  >>> k.verify(b"simple message", sig)
+  >>> sig = k.sign("simple message").raw()
+  >>> k.verify("simple message", sig)
   True
-  >>> k.verify(b"other message", sig)
+  >>> k.verify("other message", sig)
   False
   ```
   
@@ -247,8 +247,9 @@ class Keyring(cSecp256k1.Schnorr)
   >>> import asyncio
   >>> from pynostr import event
   >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
-  >>> e = event.Event.text_note("Hello nostr !").sign(k)
-  >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
+  >>> e = event.Event(kind=1, "Hello nostr !")
+  >>> e.sign(k)
+  >>> e.send_to("wss://relay.nostr.info")
   ['OK', '0459b[...]f2e99', True, '']
   ```
 
