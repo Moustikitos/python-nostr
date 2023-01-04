@@ -76,12 +76,12 @@ class EventType(IntEnum):
 class TagList(list):
 
     @property
-    def p(self) -> list:
-        return tuple(tag for tag in self if tag[0] == "p")
+    def p(self) -> tuple:
+        return self.find("p")
 
     @property
-    def e(self) -> list:
-        return tuple(tag for tag in self if tag[0] == "e")
+    def e(self) -> tuple:
+        return self.find("e")
 
     @property
     def all(self) -> dict:
@@ -90,6 +90,9 @@ class TagList(list):
             tag_0 = tag[0]
             result[tag_0] = result.get(tag_0, ()) + (tag[1:], )
         return result
+
+    def find(self, key: str) -> tuple:
+        return tuple(tag for tag in self if tag[0] == key)
 
     def add_tag(self, key: str, *values) -> None:
         self.append([key] + ["%s" % v for v in values])
@@ -122,9 +125,9 @@ class TagList(list):
         for tag in self:
             if tag[1] == puk_or_evnt:
                 return self.index(tag)
+        return -1
 
 
-# https://github.com/nostr-protocol/nips/blob/master/01.md
 class Event:
     """
 Nostr event object implementation accordnig to [NIP-01](
@@ -141,7 +144,7 @@ Attributes:
         secp256k1-point bscissa (x).
     created_at (int): unix timestamp.
     kind (int): event type.
-    tags (list): tag list.
+    tags (pynostr.event.TagList): tag list.
     content (str): event content.
     sig (str): hexadecimal raw representation of schnorr signature computed
         over the event id.
@@ -157,7 +160,7 @@ Attributes:
         prvkey: Union[str, pynostr.Keyring] = None
     ):
         """
-Create a `set metadata` event.
+Create and sign a `set metadata` event.
 
 Arguments:
     name (str): nickname to be used by user.
@@ -179,7 +182,7 @@ Returns:
     @staticmethod
     def text_note(content: str, prvkey: Union[str, pynostr.Keyring] = None):
         """
-Create a `text note` event.
+Create and sign a `text note` event.
 
 Arguments:
     content (str): the text note itself.
