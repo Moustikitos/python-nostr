@@ -201,15 +201,15 @@ class Bech32DecodeError(Exception)
 
 Exception used for unsuccessful bech32 processing
 
-<a id="pynostr.Keyring"></a>
+<a id="pynostr.PrvKey"></a>
 
-## Keyring Objects
+## PrvKey Objects
 
 ```python
-class Keyring(cSecp256k1.Schnorr)
+class PrvKey(cSecp256k1.Schnorr)
 ```
 
-`Keyring` class is used to manage secp256k1 keys. It is a subclass of python
+`PrvKey` class is used to manage secp256k1 keys. It is a subclass of python
 `int` with cryptographic attributes and methods.
 
 **Attributes**:
@@ -221,10 +221,10 @@ class Keyring(cSecp256k1.Schnorr)
 
 **Examples**:
 
-  Bellow basic uses of [Keyring](#pynostr.Keyring):
+  Bellow basic uses of [PrvKey](#pynostr.PrvKey):
   
   ```python
-  >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+  >>> k = pynostr.PrvKey("12-word secret phrase according to BIP-39")
   >>> k.encpuk
   '02a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
   >>> k.pubkey
@@ -240,13 +240,13 @@ class Keyring(cSecp256k1.Schnorr)
   False
   ```
   
-  [Keyring](#pynostr.Keyring) can also be used to sign events like so:
+  [PrvKey](#pynostr.PrvKey) can also be used to sign events like so:
   
   ```python
   >>> import pynostr
   >>> import asyncio
   >>> from pynostr import event
-  >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+  >>> k = pynostr.PrvKey("12-word secret phrase according to BIP-39")
   >>> e = event.Event(kind=1, "Hello nostr !")
   >>> e.sign(k)
   >>> e.send_to("wss://relay.nostr.info")

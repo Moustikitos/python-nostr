@@ -99,7 +99,7 @@ https://github.com/nostr-protocol/nips/blob/master/01.md
   secp256k1-point bscissa (x).
 - `created_at` _int_ - unix timestamp.
 - `kind` _int_ - event type.
-- `tags` _list_ - tag list.
+- `tags` _pynostr.event.TagList_ - tag list.
 - `content` _str_ - event content.
 - `sig` _str_ - hexadecimal raw representation of schnorr signature computed
   over the event id.
@@ -113,17 +113,17 @@ https://github.com/nostr-protocol/nips/blob/master/01.md
 def set_metadata(name: str,
                  about: str,
                  picture: str,
-                 prvkey: Union[str, pynostr.Keyring] = None)
+                 prvkey: Union[str, pynostr.PrvKey] = None)
 ```
 
-Create a `set metadata` event.
+Create and sign a `set metadata` event.
 
 **Arguments**:
 
 - `name` _str_ - nickname to be used by user.
 - `about` _str_ - few words about user.
 - `picture` _str_ - avatar url (IPFS, URL or base64 data).
-- `prvkey` _str or pynostr.Keyring_ - private key to sign the message. if not
+- `prvkey` _str or pynostr.PrvKey_ - private key to sign the message. if not
   given, it will be asked on terminal.
 
 **Returns**:
@@ -136,15 +136,15 @@ Create a `set metadata` event.
 
 ```python
 @staticmethod
-def text_note(content: str, prvkey: Union[str, pynostr.Keyring] = None)
+def text_note(content: str, prvkey: Union[str, pynostr.PrvKey] = None)
 ```
 
-Create a `text note` event.
+Create and sign a `text note` event.
 
 **Arguments**:
 
 - `content` _str_ - the text note itself.
-- `prvkey` _str or pynostr.Keyring_ - private key to sign the message. if not
+- `prvkey` _str or pynostr.PrvKey_ - private key to sign the message. if not
   given, it will be asked on terminal.
 
 **Returns**:
@@ -219,14 +219,14 @@ Check integrity of event and signature.
 #### sign
 
 ```python
-def sign(prvkey: Union[str, pynostr.Keyring] = None) -> object
+def sign(prvkey: Union[str, pynostr.PrvKey] = None) -> object
 ```
 
 Sign event.
 
 **Arguments**:
 
-- `prvkey` _str or pynostr.Keyring_ - private key to sign the message. If not
+- `prvkey` _str or pynostr.PrvKey_ - private key to sign the message. If not
   given, it will be asked on terminal.
 
 **Returns**:
