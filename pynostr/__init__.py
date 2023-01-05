@@ -179,9 +179,9 @@ class Bech32DecodeError(Exception):
     pass
 
 
-class Keyring(cSecp256k1.Schnorr):
+class PrvKey(cSecp256k1.Schnorr):
     """
-`Keyring` class is used to manage secp256k1 keys. It is a subclass of python
+`PrvKey` class is used to manage secp256k1 keys. It is a subclass of python
 `int` with cryptographic attributes and methods.
 
 Attributes:
@@ -190,10 +190,10 @@ Attributes:
     npub (property): bech32 encoded nostr public key.
     nsec (property): bech32 encoded nostr private key.
 Examples:
-    Bellow basic uses of [Keyring](#pynostr.Keyring):
+    Bellow basic uses of [PrvKey](#pynostr.PrvKey):
 
     ```python
-    >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+    >>> k = pynostr.PrvKey("12-word secret phrase according to BIP-39")
     >>> k.encpuk
     '02a549420d3f3a64e59855e8c640f7c611ca567b9862fa4d10aba1c676aa7036c5'
     >>> k.pubkey
@@ -209,13 +209,13 @@ Examples:
     False
     ```
 
-    [Keyring](#pynostr.Keyring) can also be used to sign events like so:
+    [PrvKey](#pynostr.PrvKey) can also be used to sign events like so:
 
     ```python
     >>> import pynostr
     >>> import asyncio
     >>> from pynostr import event
-    >>> k = pynostr.Keyring("12-word secret phrase according to BIP-39")
+    >>> k = pynostr.PrvKey("12-word secret phrase according to BIP-39")
     >>> e = event.Event(kind=1, "Hello nostr !")
     >>> e.sign(k)
     >>> e.send_to("wss://relay.nostr.info")
@@ -241,5 +241,5 @@ Examples:
         return bech32_prk("%064x" % self)
 
     @staticmethod
-    def from_bech32(b32prk: str) -> str:
-        return cSecp256k1.Schnorr(int(from_bech32(b32prk), base=16))
+    def from_bech32(b32prk: str) -> object:
+        return PrvKey(int(from_bech32(b32prk), base=16))

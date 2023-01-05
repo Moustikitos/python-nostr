@@ -157,7 +157,7 @@ Attributes:
     @staticmethod
     def set_metadata(
         name: str, about: str, picture: str,
-        prvkey: Union[str, pynostr.Keyring] = None
+        prvkey: Union[str, pynostr.PrvKey] = None
     ):
         """
 Create and sign a `set metadata` event.
@@ -166,7 +166,7 @@ Arguments:
     name (str): nickname to be used by user.
     about (str): few words about user.
     picture (str): avatar url (IPFS, URL or base64 data).
-    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+    prvkey (str or pynostr.PrvKey): private key to sign the message. if not
         given, it will be asked on terminal.
 Returns:
     event.Metadata: signed event instance.
@@ -180,13 +180,13 @@ Returns:
         ).sign(prvkey)
 
     @staticmethod
-    def text_note(content: str, prvkey: Union[str, pynostr.Keyring] = None):
+    def text_note(content: str, prvkey: Union[str, pynostr.PrvKey] = None):
         """
 Create and sign a `text note` event.
 
 Arguments:
     content (str): the text note itself.
-    prvkey (str or pynostr.Keyring): private key to sign the message. if not
+    prvkey (str or pynostr.PrvKey): private key to sign the message. if not
         given, it will be asked on terminal.
 Returns:
     event.Event: signed event instance.
@@ -284,27 +284,25 @@ Raises:
                 return True
         return False
 
-    def sign(self, prvkey: Union[str, pynostr.Keyring] = None) -> object:
+    def sign(self, prvkey: Union[str, pynostr.PrvKey] = None) -> object:
         """
 Sign event.
 
 Arguments:
-    prvkey (str or pynostr.Keyring): private key to sign the message. If not
+    prvkey (str or pynostr.PrvKey): private key to sign the message. If not
         given, it will be asked on terminal.
 Returns:
     event.Event: signed event instance.
 """
-        if isinstance(prvkey, pynostr.Keyring):
-            keyring = prvkey
-        else:
+        if not isinstance(prvkey, pynostr.PrvKey):
             if prvkey and HEX64.match(prvkey):
                 prvkey = int(prvkey, base=16)
-            keyring = pynostr.Keyring(prvkey)
+            prvkey = pynostr.PrvKey(prvkey)
 
-        self.pubkey = keyring.pubkey
+        self.pubkey = prvkey.pubkey
         serial = self.serialize()
         self.id = hashlib.sha256(serial).hexdigest()
-        self.sig = keyring.sign(serial).raw().decode("utf-8")
+        self.sig = prvkey.sign(serial).raw().decode("utf-8")
 
         return self
 
@@ -413,4 +411,4 @@ Examples:
         )
 
     def get(self, fieldname: str) -> str:
-        return json.loads(self.content).get(fieldname, "")
+        return json.loads(self.content).get(fieldname, None)
