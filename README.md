@@ -16,8 +16,8 @@ Type or paste your passphrase >
 Or
 
 ```python
->>> from pynostr import event, Keyring
->>> k = Keyring("my 12-word secret")
+>>> from pynostr import event, PrvKey
+>>> k = PrvKey("my 12-word secret")
 >>> e = event.Event.text_note("Hello nostr !", prvkey=k)
 >>> e.send_to("wss://relay.nostr.info")
 ['OK', 'a37138c05f7242e100be7edb7e3253916763007d2637dc0ea1a8bf81c59f1b84', True, '']
