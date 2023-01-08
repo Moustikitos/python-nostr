@@ -151,6 +151,19 @@ Create and sign a `text note` event.
 
 - `event.Event` - signed event instance.
 
+<a id="pynostr.event.Event.encrypted_message"></a>
+
+#### encrypted\_message
+
+```python
+@staticmethod
+def encrypted_message(content: str,
+                      pubkey: str,
+                      prvkey: Union[str, pynostr.PrvKey] = None)
+```
+
+Create and sign an `encrypted message` event.
+
 <a id="pynostr.event.Event.load"></a>
 
 #### load

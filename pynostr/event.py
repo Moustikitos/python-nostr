@@ -16,7 +16,7 @@ from enum import IntEnum
 
 
 HEX = re.compile("^[0-9a-f]*$")
-HEX64 = re.compile("^[0-9a-f]{64}$")
+HEX64 = pynostr.HEX64
 HEX128 = re.compile("^[0-9a-f]{128}$")
 EMAIL = re.compile(
     r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+'
@@ -56,15 +56,15 @@ class EventType(IntEnum):
     SET_METADATA = 0
     TEXT_NOTE = 1
     RECOMENDED_SERVER = 2
-    # # https://github.com/nostr-protocol/nips/blob/master/02.md
+    # https://github.com/nostr-protocol/nips/blob/master/02.md
     # CONTACT_LIST = 3
-    # # https://github.com/nostr-protocol/nips/blob/master/04.md
-    # ENCRYPT_MESSAGE = 4
-    # # https://github.com/nostr-protocol/nips/blob/master/09.md
+    # https://github.com/nostr-protocol/nips/blob/master/04.md
+    ENCRYPTED_MESSAGE = 4
+    # https://github.com/nostr-protocol/nips/blob/master/09.md
     # EVENT_DELETE = 5
-    # # https://github.com/nostr-protocol/nips/blob/master/25.md
+    # https://github.com/nostr-protocol/nips/blob/master/25.md
     # REACTION = 7
-    # # https://github.com/nostr-protocol/nips/blob/master/28.md
+    # https://github.com/nostr-protocol/nips/blob/master/28.md
     # CHANNEL_CREATE = 40
     # CHANNEL_METADATA = 41
     # CHANNEL_MESSAGE = 42
@@ -193,6 +193,19 @@ Returns:
 """
         return Event(kind=EventType.TEXT_NOTE, content=content).sign(prvkey)
 
+    @staticmethod
+    def encrypted_message(
+        content: str, pubkey: str, prvkey: Union[str, pynostr.PrvKey] = None
+    ):
+        """Create and sign an `encrypted message` event."""
+        prvkey = pynostr._prvkey(prvkey)
+        event = Event(
+            kind=EventType.ENCRYPTED_MESSAGE,
+            content=prvkey.encrypt(content, pubkey)
+        )
+        event.tags.add_pubkey(pubkey)
+        return event.sign(prvkey)
+
     def __init__(self, cnf: dict = {}, **kw) -> None:
         self.id = None
         self.pubkey = None
@@ -294,11 +307,7 @@ Arguments:
 Returns:
     event.Event: signed event instance.
 """
-        if not isinstance(prvkey, pynostr.PrvKey):
-            if prvkey and HEX64.match(prvkey):
-                prvkey = int(prvkey, base=16)
-            prvkey = pynostr.PrvKey(prvkey)
-
+        prvkey = pynostr._prvkey(prvkey)
         self.pubkey = prvkey.pubkey
         serial = self.serialize()
         self.id = hashlib.sha256(serial).hexdigest()
@@ -336,6 +345,26 @@ Arguments:
             self.identify()
         else:
             raise OrphanEvent("No owner identified, missing public key")
+
+    def encrypt(
+        self, pubkey: Union[str, pynostr.cSecp256k1.PublicKey],
+        prvkey: Union[str, pynostr.PrvKey]
+    ):
+        prvkey = pynostr._prvkey(prvkey)
+        pubkey = pynostr._pubkey(pubkey)
+        self.pubkey = prvkey.pubkey
+        self.kind = EventType.ENCRYPTED_MESSAGE
+        self.content = prvkey.encrypt(self.content, pubkey)
+        if pubkey not in (t[1]for t in self.tags.p):
+            self.tags.add_pubkey(pubkey)
+        return self.content
+
+    def decrypt(self, prvkey: Union[str, pynostr.PrvKey]):
+        prvkey = pynostr._prvkey(prvkey)
+        self.content = prvkey.decrypt(self.content, self.pubkey)
+        self.kind = EventType.TEXT_NOTE
+        self.sig = None
+        return self.content
 
     def send_to(self, url: str):
         return asyncio.run(pynostr.send_event(self.__dict__, url))

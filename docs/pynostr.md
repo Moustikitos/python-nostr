@@ -87,7 +87,7 @@ Push single event to a single relay and return responses.
   >>> import pynostr
   >>> import asyncio
   >>> from pynostr import event
-  >>> e = event.Event.text_note("Hello nostr !").sign()
+  >>> e = event.Event.text_note("Hello nostr !")
   Type or paste your passphrase >
   >>> asyncio.run(pynostr.send_event(e.__dict__, "wss://relay.nostr.info"))
   ['OK', '2781d[...]d28c9', True, '']
@@ -101,7 +101,7 @@ Push single event to a single relay and return responses.
 def to_bech32(prefix: str, hexa: str) -> str
 ```
 
-Encode string to a prefixed nostr-bech32 string.
+Encode string to `bech32`.
 
 **Arguments**:
 
@@ -110,7 +110,7 @@ Encode string to a prefixed nostr-bech32 string.
 
 **Returns**:
 
-- `str` - encoded string.
+- `str` - `bech32` encoded string.
 
 <a id="pynostr.from_bech32"></a>
 
@@ -120,7 +120,7 @@ Encode string to a prefixed nostr-bech32 string.
 def from_bech32(b32: str) -> str
 ```
 
-Decode a nostr-bech32 string to hexadecimal string.
+Decode a `bech32` encoded string.
 
 **Arguments**:
 
@@ -143,7 +143,7 @@ def bech32_puk(pubkey: str) -> str
 ```
 
 Return a nostr public key according to [NIP 19](
-https://github.com/nostr-protocol/nips/blob/master/19.md)
+https://github.com/nostr-protocol/nips/blob/master/19.md).
 
 **Arguments**:
 
@@ -151,7 +151,7 @@ https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 **Returns**:
 
-- `str` - nostr public key
+- `str` - `nostr` encoded  public key
 
 <a id="pynostr.bech32_prk"></a>
 
@@ -162,7 +162,7 @@ def bech32_prk(prvkey: str) -> str
 ```
 
 Return a nostr private key according to [NIP 19](
-https://github.com/nostr-protocol/nips/blob/master/19.md)
+https://github.com/nostr-protocol/nips/blob/master/19.md).
 
 **Arguments**:
 
@@ -170,7 +170,7 @@ https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 **Returns**:
 
-- `str` - nostr private key
+- `str` - `nostr` encoded private key
 
 <a id="pynostr.bech32_nid"></a>
 
@@ -181,7 +181,7 @@ def bech32_nid(noteid: str) -> str
 ```
 
 Return a nostr event id according to [NIP 19](
-https://github.com/nostr-protocol/nips/blob/master/19.md)
+https://github.com/nostr-protocol/nips/blob/master/19.md).
 
 **Arguments**:
 
@@ -189,7 +189,7 @@ https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 **Returns**:
 
-- `str` - nostr event id
+- `str` - `nostr` encoded event id
 
 <a id="pynostr.Bech32DecodeError"></a>
 
@@ -199,7 +199,27 @@ https://github.com/nostr-protocol/nips/blob/master/19.md)
 class Bech32DecodeError(Exception)
 ```
 
-Exception used for unsuccessful bech32 processing
+Exception used for unsuccessful bech32 processing.
+
+<a id="pynostr.Nip04EncryptionError"></a>
+
+## Nip04EncryptionError Objects
+
+```python
+class Nip04EncryptionError(Exception)
+```
+
+Exception used for unsuccessful nip04 processing.
+
+<a id="pynostr.Base64ProcessingError"></a>
+
+## Base64ProcessingError Objects
+
+```python
+class Base64ProcessingError(Exception)
+```
+
+Exception used for unsuccessful base64 processing.
 
 <a id="pynostr.PrvKey"></a>
 
@@ -209,8 +229,8 @@ Exception used for unsuccessful bech32 processing
 class PrvKey(cSecp256k1.Schnorr)
 ```
 
-`PrvKey` class is used to manage secp256k1 keys. It is a subclass of python
-`int` with cryptographic attributes and methods.
+`PrvKey` is a `secp256k1` private key used to issue `schnorr` signatures. It is
+a subclass of python `int` with cryptographic attributes and methods.
 
 **Attributes**:
 
@@ -252,4 +272,180 @@ class PrvKey(cSecp256k1.Schnorr)
   >>> e.send_to("wss://relay.nostr.info")
   ['OK', '0459b[...]f2e99', True, '']
   ```
+  
+  [PrvKey](#pynostr.PrvKey) can also encrypt text for a specific public key
+  destnation.
+  
+  ```python
+  >>> import pynostr
+  >>> k1 = pynostr.PrvKey("12-word secret phrase according to BIP-39")
+  >>> k2 = pynostr.PrvKey("another 12-word secret phrase")
+  >>> enc = k1.encrypt("simple message", k2.pubkey)
+  >>> print(enc)
+  'BQkp9Iy+eQGzK8vI9lUJjQ==?iv=89gjlOGyJVKML76nvQBo1g=='
+  >>> k2.decrypt(enc, k1.pubkey)
+  'simple message'
+  ```
+
+<a id="pynostr.PrvKey.encpuk"></a>
+
+#### encpuk
+
+```python
+@property
+def encpuk() -> str
+```
+
+`secp256k1` encoded public key.
+
+<a id="pynostr.PrvKey.pubkey"></a>
+
+#### pubkey
+
+```python
+@property
+def pubkey() -> str
+```
+
+`schnorr` encoded public key.
+
+<a id="pynostr.PrvKey.npub"></a>
+
+#### npub
+
+```python
+@property
+def npub() -> str
+```
+
+`nostr` encoded public key.
+
+<a id="pynostr.PrvKey.nsec"></a>
+
+#### nsec
+
+```python
+@property
+def nsec() -> str
+```
+
+`nostr` encoded private key.
+
+<a id="pynostr.PrvKey.from_bech32"></a>
+
+#### from\_bech32
+
+```python
+@staticmethod
+def from_bech32(b32prk: str) -> object
+```
+
+Create à [PrvKey](#pynostr.PrvKey) from `nostr` encoded private key
+
+<a id="pynostr.PrvKey.load"></a>
+
+#### load
+
+```python
+@staticmethod
+def load(pin: str) -> object
+```
+
+Load a [PrvKey](#pynostr.PrvKey) from file.
+
+**Arguments**:
+
+- `pin` _str_ - pin code used to decrypt private key and to determine filename.
+
+<a id="pynostr.PrvKey.dump"></a>
+
+#### dump
+
+```python
+def dump(pin: str) -> None
+```
+
+Store a [PrvKey](#pynostr.PrvKey) into file.
+
+**Arguments**:
+
+- `pin` _str_ - pin code used to encrypt private key and to determine filename.
+
+**Returns**:
+
+- `pynostr.PrvKey` - private key
+
+<a id="pynostr.PrvKey.shared_secret"></a>
+
+#### shared\_secret
+
+```python
+def shared_secret(pubkey: str) -> str
+```
+
+Compute a shared secret with a specifc public key. This comes from public key
+definition : `P = s x G`. Given two secrets `s1` and `s2` we can define the
+public keys `P1 = s1 x G` and `P2 = s2 x G` giving
+`P1 x (1/s1) = P2 x (1/s2) = G` and finally **`P1 x s2 = P2 x s1`**.
+
+**Arguments**:
+
+- `pubkey` _str_ - Public key to share common secret with. The public key owner
+  is the targeted user to decrypt the message with its private key.
+
+**Returns**:
+
+- `str` - shared secret. It is the x abcsissa of curve point issued by
+  [`PrvKey`](#pynostr.PrvKey)` x csecp256k1.PublicKey`
+
+<a id="pynostr.PrvKey.encrypt"></a>
+
+#### encrypt
+
+```python
+def encrypt(msg: Union[str, bytes], pubkey: str) -> str
+```
+
+Encrypt a message to be read by the owner of a specific public key. Message and
+initialization vector are base 64 encoded and joint using url query syntax with
+`iv=` keyword (see [NIP-04](
+https://github.com/nostr-protocol/nips/blob/master/04.md
+) specifcation).
+
+**Arguments**:
+
+- `msg` _str or bytes_ - message to encrypt.
+- `pubkey` _str_ - schnorr normalized public key (ie public key x absissa) as
+  hexadecimal string. The public key owner is the targeted user to
+  decrypt the message with its private key.
+
+**Returns**:
+
+- `str` - encrypted text.
+
+<a id="pynostr.PrvKey.decrypt"></a>
+
+#### decrypt
+
+```python
+def decrypt(msg: str, pubkey: str) -> str
+```
+
+Decrypt a message created by the owner of a specific public key.
+
+**Arguments**:
+
+- `msg` _str or bytes_ - message to decrypt.
+- `pubkey` _str_ - schnorr normalized public key (ie public key x absissa) as
+  hexadecimal string. The public key owner is the issuer of the encrypted
+  message.
+
+**Returns**:
+
+- `str` - decrypted text.
+
+**Raises**:
+
+- `Nip04EncryptionError` - if initialization vector can not be determined.
+- `Base64ProcessingError` - if message is not correclty base 64 encoded.
 

@@ -6,16 +6,6 @@ This python package aims to provide a simple interface to interact with nostr re
 ## create and send event
 
 ```python
->>> from pynostr import event
->>> e = event.Event.text_note("Hello nostr !")
-Type or paste your passphrase >
->>> e.send_to("wss://relay.nostr.info")
-['OK', '995b2c845315bd47d43cdff7a6f76f834943afa07144655247b8ceab6d6d2ecd', True, '']
-```
-
-Or
-
-```python
 >>> from pynostr import event, PrvKey
 >>> k = PrvKey("my 12-word secret")
 >>> e = event.Event.text_note("Hello nostr !", prvkey=k)
@@ -51,5 +41,6 @@ following [Google docstring recommendation](
 ### Client
 
 * [x] NIP 01
+* [x] NIP 04
 * [x] NIP 13
 * [x] NIP 19
