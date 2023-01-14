@@ -116,5 +116,6 @@ simple_history.html
 *.zip
 .json/
 .contact/
+.prvkey/
 .generated-files.txt
 mkdocs.yml

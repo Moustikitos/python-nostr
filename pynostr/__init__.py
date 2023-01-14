@@ -203,7 +203,6 @@ class Base64ProcessingError(Exception):
     pass
 
 
-
 class PrvKey(cSecp256k1.Schnorr):
     """
 `PrvKey` is a `secp256k1` private key used to issue `schnorr` signatures. It is
@@ -364,14 +363,10 @@ Returns:
     str: encrypted text.
 """
         initialization_vector = os.urandom(16)
-        encrypter = pyaes.Encrypter(
-            pyaes.AESModeOfOperationCBC(
-                binascii.unhexlify(self.shared_secret(pubkey)),
-                iv=initialization_vector
-            )
+        cipher = _encrypt(
+            msg, binascii.unhexlify(self.shared_secret(pubkey)),
+            initialization_vector
         )
-        msg = msg.encode("utf-8") if isinstance(msg, str) else msg
-        cipher = encrypter.feed(msg) + encrypter.feed()
         cipher = base64.b64encode(cipher)
         initialization_vector = base64.b64encode(initialization_vector)
         return (cipher + b"?iv=" + initialization_vector).decode("utf-8")
@@ -406,14 +401,23 @@ Raises:
                 "message is not nip04 complient, "
                 "can not apply base 64 decoder"
             )
-        decrypter = pyaes.Decrypter(
-            pyaes.AESModeOfOperationCBC(
-                binascii.unhexlify(self.shared_secret(pubkey)),
-                iv=initialization_vector
-            )
+        decrypted = _decrytp(
+            ciphered, binascii.unhexlify(self.shared_secret(pubkey)),
+            iv=initialization_vector
         )
-        decrypted = decrypter.feed(ciphered) + decrypter.feed()
         return decrypted.decode("utf-8")
+
+
+def _encrypt(msg: Union[str, bytes], secret: bytes, iv: bytes) -> bytes:
+    encrypter = pyaes.Encrypter(pyaes.AESModeOfOperationCBC(secret, iv=iv))
+    msg = msg.encode("utf-8") if isinstance(msg, str) else msg
+    return encrypter.feed(msg) + encrypter.feed()
+
+
+def _decrytp(cipher: Union[str, bytes], secret: bytes, iv: bytes) -> bytes:
+    decrypter = pyaes.Decrypter(pyaes.AESModeOfOperationCBC(secret, iv=iv))
+    cipher = cipher.encode("utf-8") if isinstance(cipher, str) else cipher
+    return decrypter.feed(cipher) + decrypter.feed()
 
 
 def _prvkey(prvkey: Union[str, PrvKey]):

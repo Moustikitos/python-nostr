@@ -3,15 +3,19 @@
 [References](https://github.com/nostr-protocol/nips)
 """
 
+import os
 import re
 import json
 import time
+import pyaes
+import base64
 import hashlib
 import pynostr
 import asyncio
+import binascii
 import cSecp256k1
 
-from typing import Union
+from typing import Union, Tuple
 from enum import IntEnum
 
 
@@ -347,23 +351,99 @@ Arguments:
             raise OrphanEvent("No owner identified, missing public key")
 
     def encrypt(
-        self, pubkey: Union[str, pynostr.cSecp256k1.PublicKey],
-        prvkey: Union[str, pynostr.PrvKey]
+        self, prvkey: Union[str, pynostr.PrvKey],
+        *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]],
     ):
         prvkey = pynostr._prvkey(prvkey)
-        pubkey = pynostr._pubkey(pubkey)
+        pubkeys = [pynostr._pubkey(puk) for puk in pubkeys]
+
+        if len(pubkeys) > 1:
+            # NIP-48
+            # if multiple pubkey are given for encryption, use NIP-48
+            # specification to encrypt event.
+            secret = hashlib.sha256(self.content.encode("utf-8")).digest()
+            for pubkey in pubkeys:
+                aes = pyaes.AESModeOfOperationCTR(
+                    binascii.unhexlify(prvkey.shared_secret(pubkey))
+                )
+                self.tags.add_pubkey(
+                    pubkey, "",
+                    base64.b64encode(aes.encrypt(secret)).decode("utf-8")
+                )
+        elif len(pubkeys) == 1:
+            # NIP-04
+            pubkey = pubkeys[0]
+            secret = binascii.unhexlify(prvkey.shared_secret(pubkey))
+            if pubkey not in (t[1]for t in self.tags.p):
+                self.tags.add_pubkey(pubkey)
+        else:
+            raise Exception(
+                "At least one public key is needed to encrypt event"
+            )
+
+        initialization_vector = os.urandom(16)
+        cipher = pynostr._encrypt(
+            self.content, secret, initialization_vector
+        )
+
         self.pubkey = prvkey.pubkey
         self.kind = EventType.ENCRYPTED_MESSAGE
-        self.content = prvkey.encrypt(self.content, pubkey)
-        if pubkey not in (t[1]for t in self.tags.p):
-            self.tags.add_pubkey(pubkey)
+        self.content = (
+            base64.b64encode(cipher) + b"?iv=" +
+            base64.b64encode(initialization_vector)
+        ).decode("utf-8")
         return self.content
 
     def decrypt(self, prvkey: Union[str, pynostr.PrvKey]):
         prvkey = pynostr._prvkey(prvkey)
-        self.content = prvkey.decrypt(self.content, self.pubkey)
+        pubkey = prvkey.pubkey
+
+        tag = [t for t in self.tags if t[1] == pubkey and len(t) == 4]
+        if len(tag) == 0:
+            raise EmptyTagException(f"{pubkey} not mentioned in event tags")
+
+        try:
+            secret = base64.b64decode(
+                tag[0][-1].encode("utf-8"), validate=True
+            )
+        except binascii.Error:
+            # NIP-04
+            secret = binascii.unhexlify(prvkey.shared_secret(self.pubkey))
+        else:
+            # NIP-48
+            aes = pyaes.AESModeOfOperationCTR(
+                binascii.unhexlify(prvkey.shared_secret(self.pubkey))
+            )
+            secret = aes.decrypt(secret)
+
+        try:
+            cipher, initialization_vector = self.content.split("?iv=")
+        except ValueError:
+            raise pynostr.Nip04EncryptionError(
+                "message is not nip04 complient, can not determine "
+                "initialization vector ('?iv=' probably missing)"
+            )
+        try:
+            cipher = base64.b64decode(cipher)
+            initialization_vector = base64.b64decode(initialization_vector)
+        except Exception:
+            raise pynostr.Base64ProcessingError(
+                "message is not nip04 complient, "
+                "can not apply base 64 decoder"
+            )
+
+        decrypted = pynostr._decrytp(cipher, secret, iv=initialization_vector)
+        self.content = decrypted.decode("utf-8")
         self.kind = EventType.TEXT_NOTE
         self.sig = None
+        for tag in self.tags.p[:]:
+            if len(tag) == 4:
+                try:
+                    base64.b64decode(tag[-1].encode("utf-8"), validate=True)
+                except binascii.Error:
+                    pass
+                else:
+                    self.tags.remove(tag)
         return self.content
 
     def send_to(self, url: str):
