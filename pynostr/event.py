@@ -354,6 +354,19 @@ Arguments:
         self, prvkey: Union[str, pynostr.PrvKey],
         *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]],
     ):
+        """
+Encrypt event content, tags and kind according to NIP-04 and NIP-48.
+
+Arguments:
+    prvkey (str or pynostr.PrvKey): issuer private key. It computes shared
+        secret(s) with public key(s) and also set the event public key.
+    *pubkeys: variable length argument of public key. All public keys are added
+        to event tags.
+Returns:
+    str: the event content.
+Raises:
+    Exception: if no pubkey is given.
+"""
         prvkey = pynostr._prvkey(prvkey)
         pubkeys = [pynostr._pubkey(puk) for puk in pubkeys]
 
@@ -381,16 +394,13 @@ Arguments:
                 "At least one public key is needed to encrypt event"
             )
 
-        initialization_vector = os.urandom(16)
-        cipher = pynostr._encrypt(
-            self.content, secret, initialization_vector
-        )
+        iv = os.urandom(16)
+        cipher = base64.b64encode(pynostr._encrypt(self.content, secret, iv))
 
         self.pubkey = prvkey.pubkey
         self.kind = EventType.ENCRYPTED_MESSAGE
         self.content = (
-            base64.b64encode(cipher) + b"?iv=" +
-            base64.b64encode(initialization_vector)
+            cipher + b"?iv=" + base64.b64encode(iv)
         ).decode("utf-8")
         return self.content
 
@@ -398,15 +408,15 @@ Arguments:
         prvkey = pynostr._prvkey(prvkey)
         pubkey = prvkey.pubkey
 
-        tag = [t for t in self.tags if t[1] == pubkey and len(t) == 4]
+        tag = [t for t in self.tags if t[1] == pubkey]
         if len(tag) == 0:
             raise EmptyTagException(f"{pubkey} not mentioned in event tags")
 
         try:
             secret = base64.b64decode(
-                tag[0][-1].encode("utf-8"), validate=True
+                tag[0][3].encode("utf-8"), validate=True
             )
-        except binascii.Error:
+        except (binascii.Error, IndexError):
             # NIP-04
             secret = binascii.unhexlify(prvkey.shared_secret(self.pubkey))
         else:
@@ -417,7 +427,7 @@ Arguments:
             secret = aes.decrypt(secret)
 
         try:
-            cipher, initialization_vector = self.content.split("?iv=")
+            cipher, iv = self.content.split("?iv=")
         except ValueError:
             raise pynostr.Nip04EncryptionError(
                 "message is not nip04 complient, can not determine "
@@ -425,26 +435,15 @@ Arguments:
             )
         try:
             cipher = base64.b64decode(cipher)
-            initialization_vector = base64.b64decode(initialization_vector)
+            iv = base64.b64decode(iv)
         except Exception:
             raise pynostr.Base64ProcessingError(
                 "message is not nip04 complient, "
                 "can not apply base 64 decoder"
             )
 
-        decrypted = pynostr._decrytp(cipher, secret, iv=initialization_vector)
-        self.content = decrypted.decode("utf-8")
-        self.kind = EventType.TEXT_NOTE
-        self.sig = None
-        for tag in self.tags.p[:]:
-            if len(tag) == 4:
-                try:
-                    base64.b64decode(tag[-1].encode("utf-8"), validate=True)
-                except binascii.Error:
-                    pass
-                else:
-                    self.tags.remove(tag)
-        return self.content
+        decrypted = pynostr._decrytp(cipher, secret, iv=iv)
+        return decrypted.decode("utf-8")
 
     def send_to(self, url: str):
         return asyncio.run(pynostr.send_event(self.__dict__, url))

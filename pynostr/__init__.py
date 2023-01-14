@@ -387,23 +387,22 @@ Raises:
     Base64ProcessingError: if message is not correclty base 64 encoded.
 """
         try:
-            ciphered, initialization_vector = msg.split("?iv=")
+            cipher, iv = msg.split("?iv=")
         except ValueError:
             raise Nip04EncryptionError(
-                "message is not nip04 complient, can not determine "
+                "message is not nip04 compliant, can not determine "
                 "initialization vector ('?iv=' probably missing)"
             )
         try:
-            ciphered = base64.b64decode(ciphered)
-            initialization_vector = base64.b64decode(initialization_vector)
-        except Exception:
+            cipher = base64.b64decode(cipher, validate=True)
+            iv = base64.b64decode(iv, validate=True)
+        except binascii.Error:
             raise Base64ProcessingError(
-                "message is not nip04 complient, "
+                "message is not nip04 compliant, "
                 "can not apply base 64 decoder"
             )
         decrypted = _decrytp(
-            ciphered, binascii.unhexlify(self.shared_secret(pubkey)),
-            iv=initialization_vector
+            cipher, binascii.unhexlify(self.shared_secret(pubkey)), iv=iv
         )
         return decrypted.decode("utf-8")
 

@@ -44,3 +44,4 @@ following [Google docstring recommendation](
 * [x] NIP 04
 * [x] NIP 13
 * [x] NIP 19
+* [x] NIP 38 (not merged)
