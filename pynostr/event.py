@@ -353,15 +353,14 @@ Arguments:
     def encrypt(
         self, prvkey: Union[str, pynostr.PrvKey],
         *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]],
-    ):
+    ) -> str:
         """
-Encrypt event content, tags and kind according to NIP-04 and NIP-48.
+Encrypt event content according to NIP-04 and NIP-48. This method also set
+`tags`,  `kind` and `pubkey` attributes.
 
 Arguments:
-    prvkey (str or pynostr.PrvKey): issuer private key. It computes shared
-        secret(s) with public key(s) and also set the event public key.
-    *pubkeys: variable length argument of public key. All public keys are added
-        to event tags.
+    prvkey (str or pynostr.PrvKey): issuer private key.
+    *pubkeys: variable length argument of public key.
 Returns:
     str: the event content.
 Raises:
@@ -404,7 +403,7 @@ Raises:
         ).decode("utf-8")
         return self.content
 
-    def decrypt(self, prvkey: Union[str, pynostr.PrvKey]):
+    def decrypt(self, prvkey: Union[str, pynostr.PrvKey]) -> str:
         """
 Decrypt event content according to NIP-04 and NIP-48.
 Arguments:
@@ -412,7 +411,7 @@ Arguments:
 Returns:
     str: decrypted message.
 Raises:
-    EmptyTagException: if public key is not identified as a receiver one in 
+    EmptyTagException: if public key is not identified as a receiver one in
         event tag list
     Nip04EncryptionError: if initialization vector can not be determined.
     Base64ProcessingError: if message is not correclty base-64 encoded.

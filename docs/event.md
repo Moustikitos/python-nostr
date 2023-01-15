@@ -266,18 +266,19 @@ https://github.com/nostr-protocol/nips/blob/master/13.md).
 #### encrypt
 
 ```python
-def encrypt(prvkey: Union[str, pynostr.PrvKey],
-            *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]])
+def encrypt(
+        prvkey: Union[str, pynostr.PrvKey],
+        *pubkeys: Union[Tuple[str],
+                        Tuple[pynostr.cSecp256k1.PublicKey]]) -> str
 ```
 
-Encrypt event content, tags and kind according to NIP-04 and NIP-48.
+Encrypt event content according to NIP-04 and NIP-48. This method also set
+`tags`,  `kind` and `pubkey` attributes.
 
 **Arguments**:
 
-- `prvkey` _str or pynostr.PrvKey_ - issuer private key. It computes shared
-  secret(s) with public key(s) and also set the event public key.
-- `*pubkeys` - variable length argument of public key. All public keys are added
-  to event tags.
+- `prvkey` _str or pynostr.PrvKey_ - issuer private key.
+- `*pubkeys` - variable length argument of public key.
 
 **Returns**:
 
@@ -292,7 +293,7 @@ Encrypt event content, tags and kind according to NIP-04 and NIP-48.
 #### decrypt
 
 ```python
-def decrypt(prvkey: Union[str, pynostr.PrvKey])
+def decrypt(prvkey: Union[str, pynostr.PrvKey]) -> str
 ```
 
 Decrypt event content according to NIP-04 and NIP-48.
