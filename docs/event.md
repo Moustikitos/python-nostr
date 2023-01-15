@@ -261,6 +261,57 @@ https://github.com/nostr-protocol/nips/blob/master/13.md).
 
 - `difficulty` _int_ - level of difficulty to compute the nonce.
 
+<a id="pynostr.event.Event.encrypt"></a>
+
+#### encrypt
+
+```python
+def encrypt(prvkey: Union[str, pynostr.PrvKey],
+            *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]])
+```
+
+Encrypt event content, tags and kind according to NIP-04 and NIP-48.
+
+**Arguments**:
+
+- `prvkey` _str or pynostr.PrvKey_ - issuer private key. It computes shared
+  secret(s) with public key(s) and also set the event public key.
+- `*pubkeys` - variable length argument of public key. All public keys are added
+  to event tags.
+
+**Returns**:
+
+- `str` - the event content.
+
+**Raises**:
+
+- `Exception` - if no pubkey is given.
+
+<a id="pynostr.event.Event.decrypt"></a>
+
+#### decrypt
+
+```python
+def decrypt(prvkey: Union[str, pynostr.PrvKey])
+```
+
+Decrypt event content according to NIP-04 and NIP-48.
+
+**Arguments**:
+
+- `prvkey` _str or pynostr.PrvKey_ - receiver private key.
+
+**Returns**:
+
+- `str` - decrypted message.
+
+**Raises**:
+
+- `EmptyTagException` - if public key is not identified as a receiver one in
+  event tag list
+- `Nip04EncryptionError` - if initialization vector can not be determined.
+- `Base64ProcessingError` - if message is not correclty base-64 encoded.
+
 <a id="pynostr.event.Metadata"></a>
 
 ## Metadata Objects

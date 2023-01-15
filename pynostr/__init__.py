@@ -384,7 +384,7 @@ Returns:
     str: decrypted text.
 Raises:
     Nip04EncryptionError: if initialization vector can not be determined.
-    Base64ProcessingError: if message is not correclty base 64 encoded.
+    Base64ProcessingError: if message is not correclty base-64 encoded.
 """
         try:
             cipher, iv = msg.split("?iv=")

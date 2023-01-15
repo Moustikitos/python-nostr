@@ -405,6 +405,18 @@ Raises:
         return self.content
 
     def decrypt(self, prvkey: Union[str, pynostr.PrvKey]):
+        """
+Decrypt event content according to NIP-04 and NIP-48.
+Arguments:
+    prvkey (str or pynostr.PrvKey): receiver private key.
+Returns:
+    str: decrypted message.
+Raises:
+    EmptyTagException: if public key is not identified as a receiver one in 
+        event tag list
+    Nip04EncryptionError: if initialization vector can not be determined.
+    Base64ProcessingError: if message is not correclty base-64 encoded.
+"""
         prvkey = pynostr._prvkey(prvkey)
         pubkey = prvkey.pubkey
 
@@ -434,9 +446,9 @@ Raises:
                 "initialization vector ('?iv=' probably missing)"
             )
         try:
-            cipher = base64.b64decode(cipher)
-            iv = base64.b64decode(iv)
-        except Exception:
+            cipher = base64.b64decode(cipher, validate=True)
+            iv = base64.b64decode(iv, validate=True)
+        except binascii.Error:
             raise pynostr.Base64ProcessingError(
                 "message is not nip04 complient, "
                 "can not apply base 64 decoder"
