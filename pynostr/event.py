@@ -355,7 +355,7 @@ Arguments:
         *pubkeys: Union[Tuple[str], Tuple[pynostr.cSecp256k1.PublicKey]],
     ) -> str:
         """
-Encrypt event content according to NIP-04 and NIP-48. This method also set
+Encrypt event content according to NIP-04 and NIP-48. This method also sets
 `tags`,  `kind` and `pubkey` attributes.
 
 Arguments:
